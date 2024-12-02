@@ -24,7 +24,8 @@ class CustomObsWrapper(gymnasium.ObservationWrapper):
             # "ur5e/joint_vel",
             "ur5e/wrist_force",
             "ur5e/wrist_torque",
-            # "connector_pose"
+            # "connector_pose",
+            #"port_pose",
         }
 
         # Modify the observation space to include only the desired keys
