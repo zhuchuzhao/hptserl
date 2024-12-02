@@ -20,7 +20,7 @@ env = CustomObsWrapper(env)
 env = gym.wrappers.FlattenObservation(env)
 
 controller = env.controller
-# slider_controller = SliderController(controller)
+slider_controller = SliderController(controller)
 
 # Sample a random action within the action space
 def sample():

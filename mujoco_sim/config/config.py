@@ -20,14 +20,17 @@ class PegEnvConfig():
         "restrict_cartesian_bounds": True,  # Whether to restrict the end effector to the Cartesian bounds
         "default_port_pos": np.array([0.4, 0.0, 0.0]),  # Default port position
         "port_sampling_bounds": np.array([[0.395, -0.05, 0], [0.405, 0.05, 0.1]]),  # Sampling range for port placement
-        #TODO: 1.no port randomization 2. randomize xy 3.randomize all 6 dof(limited)
-        "port_xy_randomize": True,  # Randomize port xy placement
+        "port_xy_randomize": False,  # Randomize port xy placement
         "port_z_randomize": False,  # Randomize port z placement
         "port_orientation_randomize": True,  # Randomize port placement
-        "max_port_orient": 30,  # Maximum orientation deviation for port placement
-        "tcp_xyz_randomize": True,  # Randomize tcp xyz placement
+        "max_port_orient": {
+            "x": 0,  # Maximum deviation in degrees around x-axis
+            "y": 0,  # Maximum deviation in degrees around y-axis
+            "z": 30,  # Maximum deviation in degrees around z-axis
+        },   
+        "tcp_xyz_randomize": False,  # Randomize tcp xyz placement
         "mocap_orient": True,  # Orient the tcp to the port
-        "randomization_bounds": np.array([[-0.025, -0.025, 0.05], [0.025, 0.025, 0.06]]),  # Randomization bounds for port positions
+        "randomization_bounds": np.array([[-0.025, -0.025, 0.05], [0.025, 0.025, 0.06]]),  # Randomization bounds for port positions xyz
         "reset_tolerance": 0.002,
     }
 
@@ -59,9 +62,6 @@ class PegEnvConfig():
         "reward_shaping": True,  # Use dense reward shaping
         "dense_reward_weights": {
             "box_target": 8.0,  # Weight for reaching target position
-            "gripper_box": 4.0,  # Weight for gripper being close to connector
-            "no_floor_collision": 0.25,  # Penalty for floor collisions
-            "grasping_reward": 0.25,  # Reward for successful grasp
         },
         "sparse_reward_weights": 12.5,  # Reward for completing the task
         "task_complete_tolerance": 0.002,  # Distance threshold for task completion

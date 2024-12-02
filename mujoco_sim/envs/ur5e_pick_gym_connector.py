@@ -124,7 +124,6 @@ class ur5ePegInHoleGymEnv(MujocoGymEnv):
         config=config.CONTROLLER_CONFIG,
         )
         obs_bound = 1e6
-        #TODO: 1.max obs space (everything except gripper) 2.wrist force, wrist torque, tcp vel 
         self.observation_space = gym.spaces.Dict(
             {
                 "state": gym.spaces.Dict(
@@ -190,12 +189,26 @@ class ur5ePegInHoleGymEnv(MujocoGymEnv):
             port_z = np.random.uniform(self.port_sampling_bounds[0][2], self.port_sampling_bounds[1][2])
         self._model.body_pos[self._port_id][2] = port_z
 
-        # Set port orientation
+        # Set port orientation with independent axis rotations
         if self.port_orientation_randomize:
-            max_angle_rad = np.deg2rad(self.max_port_orient)  # Limit to ±45 degrees
-            random_angles = np.random.uniform(-max_angle_rad, max_angle_rad, size=3)
+            # Convert maximum angles from degrees to radians
+            max_angle_rad_x = np.deg2rad(self.max_port_orient["x"])
+            max_angle_rad_y = np.deg2rad(self.max_port_orient["y"])
+            max_angle_rad_z = np.deg2rad(self.max_port_orient["z"])
+
+            # Sample random angles independently for each axis
+            random_angle_x = np.random.uniform(-max_angle_rad_x, max_angle_rad_x)
+            random_angle_y = np.random.uniform(-max_angle_rad_y, max_angle_rad_y)
+            random_angle_z = np.random.uniform(-max_angle_rad_z, max_angle_rad_z)
+
+            # Combine the angles into a single array
+            random_angles = np.array([random_angle_x, random_angle_y, random_angle_z])
+
+            # Convert Euler angles to quaternion
             quat_des = np.zeros(4)
             mujoco.mju_euler2Quat(quat_des, random_angles, "xyz")
+
+            # Set the port's orientation
             self._model.body_quat[self._port_id] = quat_des
 
         mujoco.mj_forward(self._model, self._data)
@@ -322,11 +335,6 @@ class ur5ePegInHoleGymEnv(MujocoGymEnv):
             info: dict[str, Any]
         """
         delta_x, delta_y, delta_z, delta_qx, delta_qy, delta_qz, grasp = action
-
-        #TODO: vectorized env. 1.for cpu 2. for gpu using using mjx
-        #TODO: Add 3 action space 1.delta x,y,z 2. delta x,y,z, delta qz 3. all deltas
-        #TODO: add delta instead of q
-        #TODO: visualize action space
 
         # Set the position.
         pos = self._data.mocap_pos[0].copy()
@@ -471,8 +479,6 @@ class ur5ePegInHoleGymEnv(MujocoGymEnv):
         
         # Dense rewards with shaping
         dense_weights = self.reward_config["dense_reward_weights"]
-
-        #TODO: change sparse reward to simple z distance 2. dense reward without tanh
 
         reward_components = {
         "box_target": lambda: max(1 - distance, 0),
