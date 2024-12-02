@@ -151,7 +151,7 @@ class ur5ePegInHoleGymEnv(MujocoGymEnv):
                 ),
             }
         )
-
+        #TODO: check penetration of object and make gripper closed always
         self.action_space = gymnasium.spaces.Box(
             low=np.asarray([-0.01, -0.01, -0.01, -0.01, -0.01, -0.01, -1.0]),
             high=np.asarray([0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 1.0]),

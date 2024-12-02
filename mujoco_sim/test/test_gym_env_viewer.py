@@ -19,7 +19,10 @@ env = SpacemouseIntervention(env)
 env = CustomObsWrapper(env)
 env = gymnasium.wrappers.FlattenObservation(env)
 
-controller = env.controller
+# Unwrapping the environment
+unwrapped_env = env.unwrapped
+
+controller = unwrapped_env.controller
 slider_controller = SliderController(controller)
 
 # Sample a random action within the action space
@@ -29,8 +32,8 @@ def sample():
     return a
 
 # Environment data and variables
-m = env.model
-d = env.data
+m = unwrapped_env.model
+d = unwrapped_env.data
 reset = False
 KEY_SPACE = 32
 action = sample()
@@ -296,7 +299,7 @@ while viewer.is_alive:
             slider_controller.root.update()
 
         # Control timestep synchronization
-        time_until_next_step = env.control_dt - (time.time() - step_start)
+        time_until_next_step = unwrapped_env.control_dt - (time.time() - step_start)
         if time_until_next_step > 0:
             time.sleep(time_until_next_step)
 

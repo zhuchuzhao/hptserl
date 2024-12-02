@@ -13,7 +13,6 @@ from mujoco_sim.envs.wrappers import SpacemouseIntervention, CustomObsWrapper, O
 glfw.init()
 
 env = envs.ur5ePegInHoleGymEnv()
-
 env = XYZGripperCloseEnv(env)
 # env = XYZQzGripperCloseEnv(env)
 # env = GripperCloseEnv(env)
@@ -24,14 +23,16 @@ env = CustomObsWrapper(env)
 env = gymnasium.wrappers.FlattenObservation(env)
 # env = ObsWrapper(env)
 
+# Unwrapping the environment
+unwrapped_env = env.unwrapped
+m = unwrapped_env.model
+d = unwrapped_env.data
+
 action_spec = env.action_space
 print(f"Action space: {action_spec}")
 
 observation_spec = env.observation_space
 print(f"Observation space: {observation_spec}")
-
-controller = env.controller
-
 
 def sample():
     # a = np.random.uniform(action_spec.low, action_spec.high, action_spec.shape)
@@ -39,8 +40,6 @@ def sample():
     print(f"Sampled action: {a}")
     return a.astype(action_spec.dtype)
 
-m = env.model
-d = env.data
 
 reset = False
 # KEY_SPACE = 32 # the key code for key ´space´
@@ -82,6 +81,6 @@ with mujoco.viewer.launch_passive(m, d, key_callback=key_callback, show_right_ui
             env.step(action)
             viewer.sync()
 
-            time_until_next_step = env.control_dt - (time.time() - step_start)
+            time_until_next_step = unwrapped_env.control_dt - (time.time() - step_start)
             if time_until_next_step > 0:
                 time.sleep(time_until_next_step)
