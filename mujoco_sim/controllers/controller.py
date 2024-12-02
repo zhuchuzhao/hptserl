@@ -22,7 +22,6 @@ class Controller:
         # self.model_names = MujocoModelNames(self.model)
         self.force = np.zeros(3)
         self.torque = np.zeros(3)
-
         # Set parameters from the config dictionary
         self.trans_damping_ratio = config.get("trans_damping_ratio", 0.996)
         self.rot_damping_ratio = config.get("rot_damping_ratio", 0.286)

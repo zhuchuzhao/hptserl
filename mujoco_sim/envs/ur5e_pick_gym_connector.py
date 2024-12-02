@@ -1,10 +1,10 @@
 from pathlib import Path
 from typing import Any, Literal, Tuple, Dict
 
-import gym
+import gymnasium
 import mujoco
 import numpy as np
-from gym import spaces
+from gymnasium import spaces
 from gymnasium.envs.mujoco.mujoco_rendering import MujocoRenderer
 
 from mujoco_sim.controllers import Controller
@@ -124,9 +124,9 @@ class ur5ePegInHoleGymEnv(MujocoGymEnv):
         config=config.CONTROLLER_CONFIG,
         )
         obs_bound = 1e6
-        self.observation_space = gym.spaces.Dict(
+        self.observation_space = gymnasium.spaces.Dict(
             {
-                "state": gym.spaces.Dict(
+                "state": gymnasium.spaces.Dict(
                     {
                         "ur5e/tcp_pose": spaces.Box(
                             -obs_bound, obs_bound, shape=(6,), dtype=np.float32
@@ -144,14 +144,17 @@ class ur5ePegInHoleGymEnv(MujocoGymEnv):
                         "connector_pose": spaces.Box(
                             -obs_bound, obs_bound, shape=(6,), dtype=np.float32
                         ),
+                        "port_pose": spaces.Box(
+                            -obs_bound, obs_bound, shape=(6,), dtype=np.float32
+                        ),
                     }
                 ),
             }
         )
 
-        self.action_space = gym.spaces.Box(
-            low=np.asarray([-1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0]),
-            high=np.asarray([1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]),
+        self.action_space = gymnasium.spaces.Box(
+            low=np.asarray([-0.01, -0.01, -0.01, -0.01, -0.01, -0.01, -1.0]),
+            high=np.asarray([0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 1.0]),
             dtype=np.float32,
         )
 
@@ -313,6 +316,7 @@ class ur5ePegInHoleGymEnv(MujocoGymEnv):
         # Cache the initial block height.
         self._z_init = self._data.sensor("connector_head_pos").data[2]        
         obs = self._compute_observation()
+
         return obs, {}
     
     def get_state(self) -> np.ndarray:
@@ -383,9 +387,9 @@ class ur5ePegInHoleGymEnv(MujocoGymEnv):
         # print(self._data.qpos[self._ur5e_dof_ids])
 
         rew, task_complete = self._compute_reward()
-        terminated = self.time_limit_exceeded() or task_complete
-
-        return obs, rew, terminated, False, {"succeed": task_complete}
+        terminated = task_complete
+        truncated = self.time_limit_exceeded()  
+        return obs, rew, terminated, truncated, {"is_success": task_complete} #success redundant but leftout for compatibility with sb3 logging
 
     def render(self) -> np.ndarray:
         rendered_frames = []
@@ -447,9 +451,14 @@ class ur5ePegInHoleGymEnv(MujocoGymEnv):
         mujoco.mju_quat2Vel(connector_ori_euler, connector_ori_quat, 1.0)
         obs["state"]["connector_pose"] = np.concatenate((connector_pos, connector_ori_euler)).astype(np.float32)
 
+        port_pos = self._data.sensor("port_bottom_pos").data.astype(np.float32)
+        port_ori_quat = self._data.sensor("port_bottom_quat").data.astype(np.float32)
+        port_ori_euler = np.zeros(3)
+        mujoco.mju_quat2Vel(port_ori_euler, port_ori_quat, 1.0)
+        obs["state"]["port_pose"] = np.concatenate((port_pos, port_ori_euler)).astype(np.float32)
+
         if self.render_mode == "human":
             self._viewer.render(self.render_mode)
-
         return obs
 
     def _compute_reward(self) -> float:

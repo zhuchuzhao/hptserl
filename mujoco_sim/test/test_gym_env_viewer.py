@@ -2,7 +2,7 @@ import time
 import mujoco
 from mujoco_sim.viewer.mujoco_viewer import MujocoViewer
 import numpy as np
-import gym
+import gymnasium
 from mujoco_sim import envs
 from mujoco_sim.utils.viz import SliderController
 from mujoco_sim.envs.wrappers import SpacemouseIntervention, CustomObsWrapper, ObsWrapper, GripperCloseEnv, XYZGripperCloseEnv, XYZQzGripperCloseEnv
@@ -17,7 +17,7 @@ gripper_dof_index = env._gripper_ctrl_id
 env = GripperCloseEnv(env)
 env = SpacemouseIntervention(env)
 env = CustomObsWrapper(env)
-env = gym.wrappers.FlattenObservation(env)
+env = gymnasium.wrappers.FlattenObservation(env)
 
 controller = env.controller
 slider_controller = SliderController(controller)

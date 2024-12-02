@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal, Optional, Union
 
-import gym
+import gymnasium
 import mujoco
 import numpy as np
 
@@ -15,7 +15,7 @@ class GymRenderingSpec:
     mode: Literal["rgb_array", "human"] = "rgb_array"
 
 
-class MujocoGymEnv(gym.Env):
+class MujocoGymEnv(gymnasium.Env):
     """MujocoEnv with gym interface."""
 
     def __init__(

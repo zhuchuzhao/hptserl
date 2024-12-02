@@ -1,6 +1,6 @@
 import time
 
-import gym
+import gymnasium
 import mujoco
 import mujoco.viewer
 import numpy as np
@@ -9,11 +9,11 @@ import mujoco_sim
 from mujoco_sim.envs.wrappers import SpacemouseIntervention, CustomObsWrapper, ObsWrapper, GripperCloseEnv, XYZGripperCloseEnv, XYZQzGripperCloseEnv
 
 
-env = gym.make("ur5ePegInHoleGymEnv-v0", render_mode="human")
+env = gymnasium.make("ur5ePegInHoleGymEnv-v0", render_mode="human")
 env = XYZQzGripperCloseEnv(env)
 env = SpacemouseIntervention(env)
 env = CustomObsWrapper(env)
-env = gym.wrappers.FlattenObservation(env)
+env = gymnasium.wrappers.FlattenObservation(env)
 
 
 action_spec = env.action_space
@@ -31,7 +31,7 @@ def sample():
 
 obs, info = env.reset()
 
-for i in range(300):
+for i in range(3000):
     a = sample()
     obs, rew, done, truncated, info = env.step(a)
 

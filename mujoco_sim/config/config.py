@@ -15,17 +15,17 @@ class PegEnvConfig():
     # UR5e Robot Configuration
     UR5E_CONFIG = {
         "home_position": np.array([-1.5708, -1.5708, 1.5708, -1.5708, -1.5708, 0]),  # Home joint angles
-        "reset_position": np.array([-1.43822003, -1.95706484,  1.53889027, -1.15262176, -1.57079633,  1.70337263]),  # Reset joint angles
+        "reset_position": np.array([-1.91249146, -1.69262946,  2.26965768, -2.14782008, -1.57075245,  1.22942491]),  # Reset joint angles
         "default_cartesian_bounds": np.array([[0.1, -0.3, 0.0], [0.4, 0.3, 0.5]]),  # Workspace boundaries in Cartesian space
         "restrict_cartesian_bounds": True,  # Whether to restrict the end effector to the Cartesian bounds
         "default_port_pos": np.array([0.4, 0.0, 0.0]),  # Default port position
         "port_sampling_bounds": np.array([[0.395, -0.05, 0], [0.405, 0.05, 0.1]]),  # Sampling range for port placement
         "port_xy_randomize": False,  # Randomize port xy placement
         "port_z_randomize": False,  # Randomize port z placement
-        "port_orientation_randomize": True,  # Randomize port placement
+        "port_orientation_randomize": False,  # Randomize port placement
         "max_port_orient": {
-            "x": 0,  # Maximum deviation in degrees around x-axis
-            "y": 0,  # Maximum deviation in degrees around y-axis
+            "x": 30,  # Maximum deviation in degrees around x-axis
+            "y": 30,  # Maximum deviation in degrees around y-axis
             "z": 30,  # Maximum deviation in degrees around z-axis
         },   
         "tcp_xyz_randomize": False,  # Randomize tcp xyz placement
@@ -61,8 +61,8 @@ class PegEnvConfig():
     REWARD_CONFIG = {
         "reward_shaping": True,  # Use dense reward shaping
         "dense_reward_weights": {
-            "box_target": 8.0,  # Weight for reaching target position
+            "box_target": 1.0,  # Weight for reaching target position
         },
-        "sparse_reward_weights": 12.5,  # Reward for completing the task
+        "sparse_reward_weights": 1,  # Reward for completing the task
         "task_complete_tolerance": 0.002,  # Distance threshold for task completion
     }

@@ -1,13 +1,13 @@
 import time
-import gym
+import gymnasium
 import numpy as np
-from gym.spaces import Box
+from gymnasium.spaces import Box
 from mujoco_sim.devices.input_utils import input2action  # Relative import for input2action
 from mujoco_sim.devices.keyboard import Keyboard  # Relative import from devices.keyboard
 from mujoco_sim.devices.spacemouse import SpaceMouse  # Relative import from devices.spacemouse
 
 
-class CustomObsWrapper(gym.ObservationWrapper):
+class CustomObsWrapper(gymnasium.ObservationWrapper):
     """
     Removal of unwanted coordinates before flattening.
     """
@@ -30,12 +30,12 @@ class CustomObsWrapper(gym.ObservationWrapper):
         # Modify the observation space to include only the desired keys
         original_state_space = self.observation_space["state"]
         # Efficiently filter the observation space
-        modified_state_space = gym.spaces.Dict({
+        modified_state_space = gymnasium.spaces.Dict({
             key: space for key, space in original_state_space.spaces.items()
             if key in self.keys_to_keep
         })
 
-        self.observation_space = gym.spaces.Dict({"state": modified_state_space})
+        self.observation_space = gymnasium.spaces.Dict({"state": modified_state_space})
 
     def observation(self, observation):
         # Keep only the desired keys in the observation
@@ -45,10 +45,10 @@ class CustomObsWrapper(gym.ObservationWrapper):
         # print(observation["state"])
         return observation
 
-import gym
-from gym.spaces import flatten_space, flatten
+import gymnasium 
+from gymnasium.spaces import flatten_space, flatten
 
-class ObsWrapper(gym.ObservationWrapper):
+class ObsWrapper(gymnasium.ObservationWrapper):
     """
     This observation wrapper treats the observation space as a dictionary
     of a flattened state space
@@ -57,7 +57,7 @@ class ObsWrapper(gym.ObservationWrapper):
     def __init__(self, env):
         super().__init__(env)
 
-        self.observation_space = gym.spaces.Dict(
+        self.observation_space = gymnasium.spaces.Dict(
             {
                 "state": flatten_space(self.env.observation_space["state"]),
             }
@@ -71,7 +71,7 @@ class ObsWrapper(gym.ObservationWrapper):
         return obs
     
 
-class GripperCloseEnv(gym.ActionWrapper):
+class GripperCloseEnv(gymnasium.ActionWrapper):
     """
     Use this wrapper to task that requires the gripper to be closed
     """
@@ -102,7 +102,7 @@ class GripperCloseEnv(gym.ActionWrapper):
             info["intervene_action"] = info["intervene_action"][:6]
         return obs, rew, done, truncated, info
 
-class XYZGripperCloseEnv(gym.ActionWrapper):
+class XYZGripperCloseEnv(gymnasium.ActionWrapper):
     """
     Wrapper to reduce action space to x, y, z deltas.
     """
@@ -134,7 +134,7 @@ class XYZGripperCloseEnv(gym.ActionWrapper):
             info["intervene_action"] = info["intervene_action"][:6]
         return obs, rew, done, truncated, info
     
-class XYZQzGripperCloseEnv(gym.ActionWrapper):
+class XYZQzGripperCloseEnv(gymnasium.ActionWrapper):
     """
     Wrapper to reduce action space to x, y, z deltas.
     """
@@ -173,13 +173,13 @@ class XYZQzGripperCloseEnv(gym.ActionWrapper):
             info["intervene_action"] = info["intervene_action"][:6]
         return obs, rew, done, truncated, info
 
-class SpacemouseIntervention(gym.ActionWrapper):
+class SpacemouseIntervention(gymnasium.ActionWrapper):
     def __init__(self, env):
         super().__init__(env)
 
         try:
             # Attempt to initialize the SpaceMouse
-            self.expert = SpaceMouse(pos_sensitivity=0.1, rot_sensitivity=0.2)
+            self.expert = SpaceMouse(pos_sensitivity=0.1, rot_sensitivity=0.8)
             self.expert.start_control()
             print("SpaceMouse connected successfully.")
         except OSError:
