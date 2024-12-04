@@ -14,6 +14,8 @@
 -->
 
 <mujoco>
+  <include file="weld.xml"/>
+
   <compiler texturedir="asset"/>
 
   <statistic meansize=".05"/>

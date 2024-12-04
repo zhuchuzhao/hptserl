@@ -11,7 +11,7 @@ from mujoco_sim.envs.wrappers import SpacemouseIntervention, CustomObsWrapper, O
 
 env = gymnasium.make("ur5ePegInHoleGymEnv-v0", render_mode="human")
 env = XYZQzGripperCloseEnv(env)
-env = SpacemouseIntervention(env)
+# env = SpacemouseIntervention(env)
 env = CustomObsWrapper(env)
 env = gymnasium.wrappers.FlattenObservation(env)
 
@@ -35,7 +35,7 @@ for i in range(3000):
     a = sample()
     obs, rew, done, truncated, info = env.step(a)
 
-    if done:
+    if done or truncated:
         obs, info = env.reset()
 
 # Properly close the environment

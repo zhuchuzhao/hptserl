@@ -16,8 +16,12 @@ _XML_PATH = _HERE / "xmls" / "ur5e_arena.xml"
 
 class ur5ePegInHoleGymEnv(MujocoGymEnv):
     """UR5e peg-in-hole environment in Mujoco."""
-    def __init__(self, render_mode: Literal["rgb_array", "human"] = "rgb_array",):
-        config = PegEnvConfig()
+    def __init__(self, render_mode: Literal["rgb_array", "human"] = "rgb_array", config=None):
+        # Initialize configuration
+        if config is None:
+            config = PegEnvConfig()
+        else:
+            config = PegEnvConfig(**config)
 
         # Rendering configuration
         self.render_width = config.RENDERING_CONFIG["width"]
@@ -78,6 +82,11 @@ class ur5ePegInHoleGymEnv(MujocoGymEnv):
             self._model.joint("wrist_2_joint").id,        # Joint 5: Wrist 2
             self._model.joint("wrist_3_joint").id         # Joint 6: Wrist 3
         ])
+
+        self._hande_dof_ids = np.asarray([
+            self._model.joint("hande_left_finger_joint").id,  # Joint 7: Gripper
+            self._model.joint("hande_right_finger_joint").id  # Joint 8: Gripper
+        ])
         
         self._ur5e_ctrl_ids = np.asarray([
             self._model.actuator("shoulder_pan").id,      # Actuator for Joint 1
@@ -87,13 +96,15 @@ class ur5ePegInHoleGymEnv(MujocoGymEnv):
             self._model.actuator("wrist_2").id,           # Actuator for Joint 5
             self._model.actuator("wrist_3").id            # Actuator for Joint 6
         ])
-        
+
         self._gripper_ctrl_id = self._model.actuator("hande_fingers_actuator").id
         self._pinch_site_id = self._model.site("pinch").id
         self._port_id = self._model.body("port_adapter").id
         self._port1_id = self._model.body("port1").id
         self._port_site = self._model.site("port_top").id
         self._port_site_id = self._model.site("port_top").id
+        self._hande_right_id = self._model.body("hande_right_finger").id
+        self._hande_left_id = self._model.body("hande_left_finger").id
         
         # Updated identifiers for the geometries and sensors
         self._floor_geom = self._model.geom("floor").id
@@ -151,7 +162,6 @@ class ur5ePegInHoleGymEnv(MujocoGymEnv):
                 ),
             }
         )
-        #TODO: check penetration of object and make gripper closed always
         self.action_space = gymnasium.spaces.Box(
             low=np.asarray([-0.01, -0.01, -0.01, -0.01, -0.01, -0.01, -1.0]),
             high=np.asarray([0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 1.0]),
@@ -174,6 +184,9 @@ class ur5ePegInHoleGymEnv(MujocoGymEnv):
         # Reset arm to home position.
         self._data.qpos[self._ur5e_dof_ids] = self.ur5e_reset
         self._data.qvel[self._ur5e_dof_ids] = 0  # Ensure joint velocities are zero
+        # self._data.qpos[self._hande_dof_ids] = np.array([0.01,0.01])   # Gripper closed
+        # self._data.ctrl[self._gripper_ctrl_id] = 101
+
         mujoco.mj_forward(self._model, self._data)
 
         # Define plate bounds
@@ -339,17 +352,16 @@ class ur5ePegInHoleGymEnv(MujocoGymEnv):
             info: dict[str, Any]
         """
         delta_x, delta_y, delta_z, delta_qx, delta_qy, delta_qz, grasp = action
-
         # Set the position.
         pos = self._data.mocap_pos[0].copy()
         dpos = np.asarray([delta_x, delta_y, delta_z]) * self._action_scale[0]
         # Transform to OBB's local frame
         cartesian_pos = self._data.geom("cartesian_bounds").xpos
-        cartesian_half_extents = self._model.geom("cartesian_bounds").size 
+        cartesian_half_extents = self._model.geom("cartesian_bounds").size
         obb_rotation = self.data.xmat[self._port_id].reshape(3, 3)
-        local_pos = (pos + dpos - cartesian_pos) @ obb_rotation.T
+        local_pos = obb_rotation.T @ (pos + dpos - cartesian_pos) 
         clipped_local_pos = np.clip(local_pos, -cartesian_half_extents, cartesian_half_extents)
-        new_pos = clipped_local_pos @ obb_rotation + cartesian_pos
+        new_pos = obb_rotation@clipped_local_pos  + cartesian_pos
         self._data.mocap_pos[0] = new_pos
         # npos = np.clip(pos + dpos, *self.cartesian_bounds)
         # self._data.mocap_pos[0] = npos
@@ -367,11 +379,10 @@ class ur5ePegInHoleGymEnv(MujocoGymEnv):
             self._data.mocap_quat[0] = quat_des
 
         # Set gripper grasp if provided
-        if grasp != 0.0:
-            g = self._data.ctrl[self._gripper_ctrl_id] / 255
-            dg = grasp * self._action_scale[2]
-            ng = np.clip(g + dg, 0.0, 1.0)
-            self._data.ctrl[self._gripper_ctrl_id] = ng * 255
+        g = self._data.ctrl[self._gripper_ctrl_id] / 255
+        dg = grasp * self._action_scale[2]
+        ng = np.clip(g + dg, 0.0, 1.0)
+        self._data.ctrl[self._gripper_ctrl_id] = ng * 255
 
         for _ in range(self._n_substeps):
 

@@ -5,11 +5,23 @@ __all__ = [
     "GymRenderingSpec",
 ]
 
-from gymnasium.envs.registration import register
+from gymnasium.envs.registration import register, WrapperSpec
 
 register(
     id="ur5ePegInHoleGymEnv-v0",
     entry_point="mujoco_sim.envs:ur5ePegInHoleGymEnv",
-    # max_episode_steps=1000,
+    additional_wrappers=(WrapperSpec(
+    name='SpacemouseIntervention',
+    entry_point='mujoco_sim.envs.wrappers:SpacemouseIntervention',
+    kwargs={},
+    ),
+    ),
+    kwargs={
+        "config": {
+            "UR5E_CONFIG": {
+                "port_xy_randomize": True,
+                "port_z_randomize": True,
+            },
+            },
+    },
 )
-

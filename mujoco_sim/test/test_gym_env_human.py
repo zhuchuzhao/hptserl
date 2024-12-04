@@ -13,15 +13,15 @@ from mujoco_sim.envs.wrappers import SpacemouseIntervention, CustomObsWrapper, O
 glfw.init()
 
 env = envs.ur5ePegInHoleGymEnv()
-env = XYZGripperCloseEnv(env)
+# env = XYZGripperCloseEnv(env)
 # env = XYZQzGripperCloseEnv(env)
-# env = GripperCloseEnv(env)
+env = GripperCloseEnv(env)
 
 env = SpacemouseIntervention(env)
-env = CustomObsWrapper(env)
+# env = CustomObsWrapper(env)
 
 env = gymnasium.wrappers.FlattenObservation(env)
-# env = ObsWrapper(env)
+env = ObsWrapper(env)
 
 # Unwrapping the environment
 unwrapped_env = env.unwrapped
@@ -84,3 +84,4 @@ with mujoco.viewer.launch_passive(m, d, key_callback=key_callback, show_right_ui
             time_until_next_step = unwrapped_env.control_dt - (time.time() - step_start)
             if time_until_next_step > 0:
                 time.sleep(time_until_next_step)
+viewer.close()

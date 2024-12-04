@@ -1,5 +1,5 @@
 <mujoco model="Arena">
-  <include file="ur5e.xml"/>
+  <include file="ur5e1.xml"/>
   <!-- <include file="connector_changed.xml"/> -->
   <include file="port_changed.xml"/>
 
