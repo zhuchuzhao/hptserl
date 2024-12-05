@@ -261,8 +261,15 @@ class ur5ePegInHoleGymEnv(MujocoGymEnv):
         # Update the geom size and position
         if self.restrict_cartesian_bounds:
             # Update the cartesian bounds
-            self._model.geom_size[self._cartesian_bounds_geom_id] = (self._model.geom("plate").size * np.array([0.5, 0.6, 1]) + np.array([0.008, 0, 0.075]))* np.array([0.75, 0.75, 0.5])
-            self._model.geom_pos[self._cartesian_bounds_geom_id] = self._data.geom("plate").xpos + np.array([0, 0, 0.075] @ rotation_matrix.T)
+            #  [ 0.006 ]
+            self._model.geom_size[self._cartesian_bounds_geom_id][:2] = (self._model.geom("plate").size[:2] * np.array([0.5, 0.6]))* np.array([0.75, 0.75])
+            lower_bound = self._data.sensor("port_bottom_pos").data[2] - np.array([0.01])
+            upper_bound = self._data.sensor("port_bottom_pos").data[2] + np.array([0.12]) 
+            self._model.geom_size[self._cartesian_bounds_geom_id][2] = (upper_bound - lower_bound) / 2.0
+
+            self._model.geom_pos[self._cartesian_bounds_geom_id] = self._data.geom("plate").xpos
+            self._model.geom_pos[self._cartesian_bounds_geom_id] += np.array([0, 0, 0.075] @ rotation_matrix.T)
+            #+ np.array([0, 0, 0.017] @ rotation_matrix.T
             self._model.geom_quat[self._cartesian_bounds_geom_id] = self._model.body_quat[self._port_id]
 
         port_xyz = self.data.site_xpos[self._port_site_id]

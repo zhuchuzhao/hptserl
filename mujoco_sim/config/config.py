@@ -36,7 +36,7 @@ class PegEnvConfig():
                 "y": 0,  # Maximum deviation in degrees around y-axis
                 "z": 0,  # Maximum deviation in degrees around z-axis
             },
-            "randomization_bounds": np.array([[-0.025, -0.025, 0.05], [0.025, 0.025, 0.06]]),  # Randomization bounds for port positions xyz
+            "randomization_bounds": np.array([[-0.025, -0.025, 0.06], [0.025, 0.025, 0.1]]),  # Randomization bounds for port positions xyz
             "reset_tolerance": 0.06,
         }
 
