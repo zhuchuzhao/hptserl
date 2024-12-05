@@ -220,13 +220,13 @@ while viewer.is_alive:
         # Reshape rotation_matrix to a 3x3 matrix after conversion
         rotation_matrix = rotation_matrix.reshape((3, 3))
 
-        # viewer.add_marker(
-        #     pos=mocap_pos,
-        #     mat=rotation_matrix,
-        #     size=[0.001, 0.001, 0.5],
-        #     rgba=[0, 1, 1, 0.3],
-        #     type=mujoco.mjtGeom.mjGEOM_ARROW,
-        # )
+        viewer.add_marker(
+            pos=mocap_pos,
+            mat=rotation_matrix,
+            size=[0.001, 0.001, 0.5],
+            rgba=[0, 1, 1, 0.3],
+            type=mujoco.mjtGeom.mjGEOM_ARROW,
+        )
 
         # Update graph lines for UR5e DOF
         for joint_idx in ur5e_dof_indices:

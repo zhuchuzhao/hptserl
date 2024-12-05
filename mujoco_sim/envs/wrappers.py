@@ -12,21 +12,16 @@ class CustomObsWrapper(gymnasium.ObservationWrapper):
     Removal of unwanted coordinates before flattening.
     """
 
-    def __init__(self, env):
+    def __init__(self, env, keys_to_keep=None):
         super().__init__(env)
 
-        # Specify the keys you want to keep in the observation
-        self.keys_to_keep = {
-            # "ur5e/tcp_pose",
-            "ur5e/tcp_vel",
-            # "ur5e/gripper_pos",
-            # "ur5e/joint_pos",
-            # "ur5e/joint_vel",
-            "ur5e/wrist_force",
-            "ur5e/wrist_torque",
-            # "connector_pose",
-            #"port_pose",
-        }
+        # If keys_to_keep is None, keep all keys
+        if keys_to_keep is None:
+            # Extract all keys from the original observation space
+            original_state_space = self.observation_space["state"]
+            self.keys_to_keep = set(original_state_space.spaces.keys())
+        else:
+            self.keys_to_keep = set(keys_to_keep)
 
         # Modify the observation space to include only the desired keys
         original_state_space = self.observation_space["state"]
@@ -180,13 +175,13 @@ class SpacemouseIntervention(gymnasium.ActionWrapper):
 
         try:
             # Attempt to initialize the SpaceMouse
-            self.expert = SpaceMouse(pos_sensitivity=0.1, rot_sensitivity=0.8)
+            self.expert = SpaceMouse()
             self.expert.start_control()
             print("SpaceMouse connected successfully.")
         except OSError:
             # If SpaceMouse is not found, fall back to Keyboard
             print("SpaceMouse not found, falling back to Keyboard.")
-            self.expert = Keyboard(pos_sensitivity=0.03, rot_sensitivity=5)
+            self.expert = Keyboard()
 
         self.expert.start_control()
         self.last_intervene = 0

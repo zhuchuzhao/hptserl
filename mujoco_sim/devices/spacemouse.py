@@ -176,8 +176,8 @@ class SpaceMouse(Device):
         self,
         vendor_id=1133,
         product_id=50725,
-        pos_sensitivity=1.0,
-        rot_sensitivity=1.0,
+        pos_sensitivity=0.005*0.1,
+        rot_sensitivity=0.005*0.8,
     ):
 
         print("Opening SpaceMouse device")

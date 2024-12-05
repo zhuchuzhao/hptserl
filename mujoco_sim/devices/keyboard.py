@@ -17,7 +17,7 @@ class Keyboard(Device):
         rot_sensitivity (float): Magnitude of scale input rotation commands scaling
     """
 
-    def __init__(self, pos_sensitivity=1, rot_sensitivity=1):
+    def __init__(self, pos_sensitivity=0.005*0.03, rot_sensitivity=0.005*5):
 
         self._display_controls()
         self._reset_internal_state()

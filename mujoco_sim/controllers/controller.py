@@ -44,9 +44,12 @@ class Controller:
         self.quat_conj = np.zeros(4)
         self.quat_err = np.zeros(4)
         self.ori_err = np.zeros(3)
+        self.x_err_norm = 0.0
+        self.ori_err_norm = 0.0
         self.J_v = np.zeros((3, model.nv), dtype=np.float64)
         self.J_w = np.zeros((3, model.nv), dtype=np.float64)
         self.M = np.zeros((model.nv, model.nv), dtype=np.float64)
+        self.error = np.zeros(6)
 
     def set_parameters(
         self,
@@ -106,8 +109,7 @@ class Controller:
         else:
             kp = np.asarray(gains) / self.integration_dt
             if kd_values is None:
-                # kd = damping_ratio * kp * self.integration_dt
-                kd = 0
+                kd = 0 * kp * self.integration_dt
             else:
                 kd = np.asarray(kd_values)
 
@@ -139,9 +141,9 @@ class Controller:
         x_err = self.data.site_xpos[self.site_id] - x_des
         dx_err = J_v @ dq
 
-        x_err_norm = np.linalg.norm(x_err)
+        self.x_err_norm = np.linalg.norm(x_err)
 
-        if ddx_max > 0.0 and x_err_norm > ddx_max:
+        if ddx_max > 0.0 and self.x_err_norm > ddx_max:
             x_err = np.clip(x_err, -ddx_max, ddx_max)
 
         x_err *= -kp_kv_pos[:, 0]
@@ -156,9 +158,9 @@ class Controller:
         mujoco.mju_quat2Vel(self.ori_err, self.quat_err, 1.0)
         w_err = J_w @ dq
 
-        ori_err_norm = np.linalg.norm(self.ori_err)
+        self.ori_err_norm = np.linalg.norm(self.ori_err)
 
-        if dw_max > 0.0 and ori_err_norm > dw_max:
+        if dw_max > 0.0 and self.ori_err_norm > dw_max:
             self.ori_err = np.clip(self.ori_err, -dw_max, dw_max) 
 
         self.ori_err *= -kp_kv_ori[:, 0]
@@ -166,7 +168,7 @@ class Controller:
 
         dw = self.ori_err + w_err
 
-        error = np.concatenate([ddx, dw], axis=0)
+        self.error = np.concatenate([ddx, dw], axis=0)
 
         if self.method == "dynamics":
             # Mx_inv_v = J_v @ M_inv @ J_v.T
@@ -188,30 +190,30 @@ class Controller:
                 mujoco.mj_fullM(self.model, self.M, self.data.qM)
                 M = self.M[self.dof_ids, :][:, self.dof_ids]
                 M_inv = np.linalg.inv(M)
-                ddq = M_inv @ J.T @ error
+                ddq = M_inv @ J.T @ self.error
             else:
-                ddq = J.T @ error  # Skip M_inv if inertia compensation is off
+                ddq = J.T @ self.error  # Skip M_inv if inertia compensation is off
 
             dq += ddq * self.integration_dt
 
         elif self.method == "pinv":
             J_pinv = np.linalg.pinv(J)
-            dq = J_pinv @ error
+            dq = J_pinv @ self.error
             q += dq
         elif self.method == "svd":
             U, S, Vt = np.linalg.svd(J, full_matrices=False)
             S_inv = np.zeros_like(S)
             S_inv[S > 1e-5] = 1.0 / S[S > 1e-5]
             J_pinv = Vt.T @ np.diag(S_inv) @ U.T
-            dq = J_pinv @ error
+            dq = J_pinv @ self.error
             q += dq
         elif self.method == "trans":
-            dq = J.T @ error
+            dq = J.T @ self.error
             q += dq
         else:
             damping = 1e-4
             lambda_I = damping * np.eye(J.shape[0])
-            dq = J.T @ np.linalg.inv(J @ J.T + lambda_I) @ error
+            dq = J.T @ np.linalg.inv(J @ J.T + lambda_I) @ self.error
 
         # Scale down joint velocities if they exceed maximum.
         if self.max_angvel > 0:
@@ -232,4 +234,4 @@ class Controller:
             mujoco.mj_jacSubtreeCom(self.model, self.data, jac, subtreeid)
             self.data.qfrc_applied[:] -=  self.model.opt.gravity * total_mass @ jac
 
-        return q
+        return q, dq

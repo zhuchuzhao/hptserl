@@ -4,17 +4,12 @@ import gymnasium
 import mujoco
 import mujoco.viewer
 import numpy as np
-
 import mujoco_sim
-from mujoco_sim.envs.wrappers import SpacemouseIntervention, CustomObsWrapper, ObsWrapper, GripperCloseEnv, XYZGripperCloseEnv, XYZQzGripperCloseEnv
 
 
-env = gymnasium.make("ur5ePegInHoleGymEnv-v0", render_mode="human")
-env = XYZQzGripperCloseEnv(env)
-# env = SpacemouseIntervention(env)
-env = CustomObsWrapper(env)
-env = gymnasium.wrappers.FlattenObservation(env)
-
+env = gymnasium.make("ur5ePegInHoleGymEnv_easy-v0", render_mode="human")
+# env = gymnasium.make("ur5ePegInHoleGymEnv_medium-v0", render_mode="human")
+# env = gymnasium.make("ur5ePegInHoleGymEnv_hard-v0", render_mode="human")
 
 action_spec = env.action_space
 print(f"Action space: {action_spec}")

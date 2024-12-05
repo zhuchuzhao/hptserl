@@ -4,7 +4,9 @@
   <include file="port_changed.xml"/>
 
   <option timestep=".002" cone="elliptic" impratio="10" noslip_iterations="5" noslip_tolerance="0" />
-
+  <option>
+    <flag multiccd="enable"/>
+  </option>
   <statistic center="0.3 0 0.4" extent=".8"/>
 
   <visual>

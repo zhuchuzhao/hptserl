@@ -21,7 +21,6 @@ env = SpacemouseIntervention(env)
 # env = CustomObsWrapper(env)
 
 env = gymnasium.wrappers.FlattenObservation(env)
-env = ObsWrapper(env)
 
 # Unwrapping the environment
 unwrapped_env = env.unwrapped
