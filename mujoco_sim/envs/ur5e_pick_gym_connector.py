@@ -62,7 +62,9 @@ class ur5ePegInHoleGymEnv(MujocoGymEnv):
         self.reset_tolerance = config.UR5E_CONFIG["reset_tolerance"]
 
         # Reward configuration
-        self.reward_config = config.REWARD_CONFIG 
+        self.reward_config = config.REWARD_CONFIG
+        self.sparse_reward = 0.0
+        self.dense_reward = 0.0
 
         self.metadata = {
             "render_modes": [
@@ -299,7 +301,6 @@ class ur5ePegInHoleGymEnv(MujocoGymEnv):
             quat_des = np.zeros(4)
             mujoco.mju_mat2Quat(quat_des, self.data.site_xmat[self._port_site_id])
             self._data.mocap_quat[0] = quat_des
-            print(self._data.mocap_quat[0])
         else:
             ori = self._data.mocap_quat[0].copy()
             # Convert maximum angles from degrees to radians
@@ -525,11 +526,7 @@ class ur5ePegInHoleGymEnv(MujocoGymEnv):
         # Task completion
         task_complete = distance < self.reward_config["task_complete_tolerance"]
         task_complete_z = z_distance < self.reward_config["task_complete_tolerance"]
-
-        # Compute z distance for sparse reward
-        if not self.reward_config["reward_shaping"]:
-            return (self.reward_config["sparse_reward_weights"] if task_complete_z else 0.0), task_complete
-        
+   
         # Dense rewards with shaping
         dense_weights = self.reward_config["dense_reward_weights"]
 
@@ -538,12 +535,16 @@ class ur5ePegInHoleGymEnv(MujocoGymEnv):
         }
 
         # Combine only the active rewards
-        reward = sum(
+        self.dense_reward = sum(
             dense_weights[component] * reward_components[component]()
             for component in dense_weights if component in reward_components
         )
+        # Compute z distance for sparse reward
+        self.sparse_reward = self.reward_config["sparse_reward_weights"] if task_complete_z else 0.0
+        if not self.reward_config["reward_shaping"]:
+            return self.sparse_reward, task_complete
             
-        return reward, task_complete
+        return self.dense_reward, task_complete
 
 if __name__ == "__main__":
     env = ur5ePegInHoleGymEnv()

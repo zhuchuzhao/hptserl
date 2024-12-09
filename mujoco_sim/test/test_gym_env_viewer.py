@@ -207,10 +207,10 @@ while viewer.is_alive:
             last_sample_time = time.time()
 
         obs, rew, terminated, truncated, info = env.step(action)
-        port_sensor = d.sensor("port_bottom_pos").data
-        connector_sensor = d.sensor("connector_bottom_pos").data
-        distance = np.linalg.norm(connector_sensor - port_sensor)
-        success = distance < 0.005
+
+        sparse_reward = unwrapped_env.sparse_reward
+        dense_reward = unwrapped_env.dense_reward
+
 
         # Add marker at mocap position
         mocap_pos = d.mocap_pos[0]
@@ -264,8 +264,8 @@ while viewer.is_alive:
         # viewer.add_data_to_line(line_name="current_ori_z", line_data=current[2], fig_idx=2)
 
         # Update rewards plots
-        viewer.add_data_to_line(line_name="dense_reward", line_data=rew, fig_idx=1)
-        viewer.add_data_to_line(line_name="sparse_reward", line_data=success, fig_idx=2)
+        viewer.add_data_to_line(line_name="dense_reward", line_data=dense_reward, fig_idx=1)
+        viewer.add_data_to_line(line_name="sparse_reward", line_data=sparse_reward, fig_idx=2)
 
         # Update Joint Velocity lines
         for joint_idx in ur5e_dof_indices:

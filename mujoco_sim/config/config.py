@@ -70,7 +70,7 @@ class PegEnvConfig():
                 "box_target": 1.0,  # Weight for reaching target position
             },
             "sparse_reward_weights": 1,  # Reward for completing the task
-            "task_complete_tolerance": 0.002,  # Distance threshold for task completion
+            "task_complete_tolerance": 0.0025,  # Distance threshold for task completion
         }
 
         # Update configurations with provided keyword arguments
