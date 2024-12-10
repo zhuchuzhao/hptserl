@@ -276,11 +276,13 @@ while viewer.is_alive:
             viewer.add_data_to_line(line_name=f"joint_torque_{joint_idx}", line_data=d.qfrc_actuator[joint_idx], fig_idx=4)
 
         # Update Wrist Force lines
-        wrist_force = d.sensor("ur5e/wrist_force").data
-        id = m.body("tool0_link").id
-        total_mass = m.body_subtreemass[id]
-        gravity_force = m.opt.gravity * total_mass
-        wrist_force = wrist_force - gravity_force
+        _attatchment_id = m.site("attachment_site").id
+        bodyid = m.site_bodyid[_attatchment_id]
+        rootid = m.body_rootid[bodyid]
+        cfrc_int = d.cfrc_int[bodyid]
+        total_mass = m.body_subtreemass[bodyid]
+        gravity_force = -m.opt.gravity * total_mass
+        wrist_force = cfrc_int[3:] - gravity_force
 
         viewer.add_data_to_line(line_name="wrist_force_x", line_data=wrist_force[0], fig_idx=5)
         viewer.add_data_to_line(line_name="wrist_force_y", line_data=wrist_force[1], fig_idx=5)

@@ -108,6 +108,7 @@ class ur5ePegInHoleGymEnv(MujocoGymEnv):
         self._port_site_id = self._model.site("port_top").id
         self._hande_right_id = self._model.body("hande_right_finger").id
         self._hande_left_id = self._model.body("hande_left_finger").id
+        self._attatchment_id = self._model.site("attachment_site").id
         
         # Updated identifiers for the geometries and sensors
         self._floor_geom = self._model.geom("floor").id
@@ -427,6 +428,7 @@ class ur5ePegInHoleGymEnv(MujocoGymEnv):
             )  
             # Set the control signal.
             self._data.ctrl[self._ur5e_ctrl_ids] = ctrl
+
             mujoco.mj_step(self._model, self._data)
             
         obs = self._compute_observation()
@@ -484,15 +486,21 @@ class ur5ePegInHoleGymEnv(MujocoGymEnv):
         ).ravel()
         obs["state"]["ur5e/joint_vel"] = joint_vel.astype(np.float32)
 
-        wrist_force = self._data.sensor("ur5e/wrist_force").data
-        id = self._model.body("tool0_link").id
-        total_mass = self._model.body_subtreemass[id]
-        gravity_force = self._model.opt.gravity * total_mass
-        wrist_force = wrist_force - gravity_force
+        # wrist_force = self._data.sensor("ur5e/wrist_force").data
+        bodyid = self._model.site_bodyid[self._attatchment_id]
+        rootid = self._model.body_rootid[bodyid]
+        cfrc_int = self._data.cfrc_int[bodyid]
+        total_mass = self._model.body_subtreemass[bodyid]
+        gravity_force = -self._model.opt.gravity * total_mass
+        wrist_force = cfrc_int[3:] - gravity_force
         obs["state"]["ur5e/wrist_force"] = wrist_force.astype(np.float32)
+        print("obs:", obs["state"]["ur5e/wrist_force"])
 
-        wrist_torque = self._data.sensor("ur5e/wrist_torque").data
+        # wrist_torque = self._data.sensor("ur5e/wrist_torque").data
+        dif = self._data.site_xpos[self._attatchment_id] - self._data.subtree_com[rootid]
+        wrist_torque = cfrc_int[:3] - np.cross(dif, cfrc_int[3:])
         obs["state"]["ur5e/wrist_torque"] = wrist_torque.astype(np.float32)
+        print("obs:", obs["state"]["ur5e/wrist_torque"])
 
         connector_pos = self._data.sensor("connector_head_pos").data.astype(np.float32)
         connector_ori_quat = self._data.sensor("connector_head_quat").data.astype(np.float32)
