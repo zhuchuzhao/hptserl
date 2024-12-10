@@ -277,6 +277,11 @@ while viewer.is_alive:
 
         # Update Wrist Force lines
         wrist_force = d.sensor("ur5e/wrist_force").data
+        id = m.body("tool0_link").id
+        total_mass = m.body_subtreemass[id]
+        gravity_force = m.opt.gravity * total_mass
+        wrist_force = wrist_force - gravity_force
+
         viewer.add_data_to_line(line_name="wrist_force_x", line_data=wrist_force[0], fig_idx=5)
         viewer.add_data_to_line(line_name="wrist_force_y", line_data=wrist_force[1], fig_idx=5)
         viewer.add_data_to_line(line_name="wrist_force_z", line_data=wrist_force[2], fig_idx=5)

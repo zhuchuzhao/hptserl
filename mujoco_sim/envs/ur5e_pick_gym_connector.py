@@ -485,6 +485,10 @@ class ur5ePegInHoleGymEnv(MujocoGymEnv):
         obs["state"]["ur5e/joint_vel"] = joint_vel.astype(np.float32)
 
         wrist_force = self._data.sensor("ur5e/wrist_force").data
+        id = self._model.body("tool0_link").id
+        total_mass = self._model.body_subtreemass[id]
+        gravity_force = self._model.opt.gravity * total_mass
+        wrist_force = wrist_force - gravity_force
         obs["state"]["ur5e/wrist_force"] = wrist_force.astype(np.float32)
 
         wrist_torque = self._data.sensor("ur5e/wrist_torque").data
