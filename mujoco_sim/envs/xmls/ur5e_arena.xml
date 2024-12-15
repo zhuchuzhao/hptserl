@@ -1,6 +1,6 @@
 <mujoco model="Arena">
-  <include file="ur5e1.xml"/>
-  <!-- <include file="connector_changed.xml"/> -->
+  <include file="ur5e.xml"/>
+  <include file="connector_changed.xml"/>
   <include file="port_changed.xml"/>
 
   <option timestep=".002" cone="elliptic" impratio="10" noslip_iterations="5" noslip_tolerance="0" />

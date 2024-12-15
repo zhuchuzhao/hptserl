@@ -36,7 +36,6 @@ class Controller:
         self.pos_kd = config.get("pos_kd", None)
         self.ori_kd = config.get("ori_kd", None)
         self.max_angvel = config.get("max_angvel", 4)
-        self.gravity_compensation = config.get("gravity_compensation", True)
 
         # Preallocate memory for commonly used variables
         self.quat = np.zeros(4)
@@ -115,7 +114,7 @@ class Controller:
 
         return np.stack([kp, kd], axis=-1)
 
-    def control(self, pos: Optional[np.ndarray] = None, ori: Optional[np.ndarray] = None) -> np.ndarray:
+    def control(self, pos: Optional[np.ndarray] = None, ori: Optional[np.ndarray] = None, ) -> np.ndarray:
         # Desired position and orientation
         x_des = self.data.site_xpos[self.site_id] if pos is None else np.asarray(pos)
         if ori is None:
@@ -145,6 +144,12 @@ class Controller:
 
         if ddx_max > 0.0 and self.x_err_norm > ddx_max:
             x_err = np.clip(x_err, -ddx_max, ddx_max)
+        
+        # Check positional error tolerance
+        if self.x_err_norm < self.error_tolerance_pos:
+            # If the error is within tolerance, set it to zero
+            x_err = np.zeros_like(x_err)
+            # dx_err = np.zeros_like(dx_err)
 
         x_err *= -kp_kv_pos[:, 0]
         dx_err *= -kp_kv_pos[:, 1]
@@ -163,12 +168,48 @@ class Controller:
         if dw_max > 0.0 and self.ori_err_norm > dw_max:
             self.ori_err = np.clip(self.ori_err, -dw_max, dw_max) 
 
+        # Check orientation error tolerance
+        if self.ori_err_norm < self.error_tolerance_ori:
+            # If the error is within tolerance, set it to zero
+            self.ori_err = np.zeros_like(self.ori_err)
+            # w_err = np.zeros_like(w_err)
+
         self.ori_err *= -kp_kv_ori[:, 0]
         w_err *= -kp_kv_ori[:, 1]
 
         dw = self.ori_err + w_err
 
         self.error = np.concatenate([ddx, dw], axis=0)
+
+        # # wrist_force = self._data.sensor("ur5e/wrist_force").data
+        # bodyid = self.model.site_bodyid[self.model.site("attachment_site").id]
+        # bodyid2 = self.model.body("connector_body").id
+
+        # rootid = self.model.body_rootid[bodyid]
+        # cfrc_int = self.data.cfrc_int[bodyid].copy()
+        # total_mass = self.model.body_subtreemass[bodyid]
+        # gravity_force = -self.model.opt.gravity * total_mass
+        # # print("Gravity Force: ", gravity_force)
+        # wrist_force = cfrc_int[3:] - gravity_force
+        # print("Wrist Force before: ", wrist_force)
+
+        # thresh = -2
+        # wrist_force = [a_ - thresh if a_ < thresh else 0 for a_ in wrist_force]
+
+        # dif = self.data.site_xpos[self.model.site("attachment_site").id] - self.data.subtree_com[rootid]
+        # wrist_torque = cfrc_int[:3] - np.cross(dif, cfrc_int[3:])
+
+        # print("Wrist Force: ", wrist_force)
+        # print("Wrist Torque: ", wrist_torque)
+        # direction_vector = np.array([0, 0, 1, 0, 0, 0])
+        # print("Error: ", self.error)
+        # compensation = 0.05 * np.array(wrist_force, dtype=np.float64)* direction_vector[:3]
+        # print("Compensation: ", compensation)
+        # self.error[:3] -= compensation
+        # print("Error_after: ", self.error)
+        # # print("cfrc_ext: ", self.data.cfrc_ext[bodyid2][3:])
+
+        # # self.error[3:] -= 0.01 *np.array(wrist_torque, dtype=np.float64)* direction_vector[3:]
 
         if self.method == "dynamics":
             # Mx_inv_v = J_v @ M_inv @ J_v.T
@@ -185,6 +226,7 @@ class Controller:
             #     Mx_w = np.linalg.inv(Mx_inv_w)
             # else:
             #     Mx_w = np.linalg.pinv(Mx_inv_w, rcond=1e-2)
+
 
             if self.inertia_compensation:
                 mujoco.mj_fullM(self.model, self.M, self.data.qM)
@@ -225,13 +267,5 @@ class Controller:
         q_min = self.model.actuator_ctrlrange[:6, 0]
         q_max = self.model.actuator_ctrlrange[:6, 1]
         np.clip(q, q_min, q_max, out=q)
-
-        if self.gravity_compensation:
-            self.data.qfrc_applied[:] = 0.0
-            jac = np.empty((3, self.model.nv))
-            subtreeid = 1
-            total_mass = self.model.body_subtreemass[subtreeid]
-            mujoco.mj_jacSubtreeCom(self.model, self.data, jac, subtreeid)
-            self.data.qfrc_applied[:] -=  self.model.opt.gravity * total_mass @ jac
 
         return q, dq

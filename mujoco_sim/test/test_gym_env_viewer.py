@@ -23,7 +23,7 @@ env = gymnasium.wrappers.FlattenObservation(env)
 unwrapped_env = env.unwrapped
 
 controller = unwrapped_env.controller
-slider_controller = SliderController(controller)
+# slider_controller = SliderController(controller)
 
 # Sample a random action within the action space
 def sample():

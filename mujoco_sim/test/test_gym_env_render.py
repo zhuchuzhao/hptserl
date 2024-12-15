@@ -7,9 +7,9 @@ import numpy as np
 import mujoco_sim
 
 
-env = gymnasium.make("ur5ePegInHoleGymEnv_easy-v0", render_mode="human")
-# env = gymnasium.make("ur5ePegInHoleGymEnv_medium-v0", render_mode="human")
-# env = gymnasium.make("ur5ePegInHoleGymEnv_hard-v0", render_mode="human")
+# env = gymnasium.make("ur5ePegInHoleGymEnv_state-v0", render_mode="human")
+env = gymnasium.make("ur5ePegInHoleGymEnv_vision-v0", render_mode="human")
+
 
 action_spec = env.action_space
 print(f"Action space: {action_spec}")

@@ -1,71 +1,75 @@
 import time
 import gymnasium
 import numpy as np
-from gymnasium.spaces import Box
+from gymnasium.spaces import Box, flatten_space, flatten
 from mujoco_sim.devices.input_utils import input2action  # Relative import for input2action
 from mujoco_sim.devices.keyboard import Keyboard  # Relative import from devices.keyboard
 from mujoco_sim.devices.spacemouse import SpaceMouse  # Relative import from devices.spacemouse
 
-
-class CustomObsWrapper(gymnasium.ObservationWrapper):
-    """
-    Removal of unwanted coordinates before flattening.
-    """
-
-    def __init__(self, env, keys_to_keep=None):
-        super().__init__(env)
-
-        # If keys_to_keep is None, keep all keys
-        if keys_to_keep is None:
-            # Extract all keys from the original observation space
-            original_state_space = self.observation_space["state"]
-            self.keys_to_keep = set(original_state_space.spaces.keys())
-        else:
-            self.keys_to_keep = set(keys_to_keep)
-
-        # Modify the observation space to include only the desired keys
-        original_state_space = self.observation_space["state"]
-        # Efficiently filter the observation space
-        modified_state_space = gymnasium.spaces.Dict({
-            key: space for key, space in original_state_space.spaces.items()
-            if key in self.keys_to_keep
-        })
-
-        self.observation_space = gymnasium.spaces.Dict({"state": modified_state_space})
-
-    def observation(self, observation):
-        # Keep only the desired keys in the observation
-        observation["state"] = {
-            key: observation["state"][key] for key in self.keys_to_keep
-        }
-        # print(observation["state"])
-        return observation
-
-import gymnasium 
-from gymnasium.spaces import flatten_space, flatten
-
+    
 class ObsWrapper(gymnasium.ObservationWrapper):
     """
     This observation wrapper treats the observation space as a dictionary
-    of a flattened state space
+    of a flattened state space and optionally the images, if available.
     """
 
-    def __init__(self, env):
+    def __init__(self, env, proprio_keys=None):
         super().__init__(env)
+        self.proprio_keys = proprio_keys
+        if self.proprio_keys is None:
+            self.proprio_keys = list(self.env.observation_space["state"].keys())
 
-        self.observation_space = gymnasium.spaces.Dict(
-            {
-                "state": flatten_space(self.env.observation_space["state"]),
-            }
+        self.proprio_space = gymnasium.spaces.Dict(
+            {key: self.env.observation_space["state"][key] for key in self.proprio_keys}
         )
 
-    def observation(self, obs):
+        # Flatten the state observation space
+        state_space = flatten_space(self.proprio_space)
 
-        obs = {
-            "state": flatten(self.env.observation_space["state"], obs["state"]),
-        }
+        print(self.env.observation_space.spaces)
+        if "images" in self.env.observation_space.spaces:
+            self.observation_space = gymnasium.spaces.Dict(
+                {
+                    "state": state_space,
+                    **(self.env.observation_space["images"]),
+                }
+            )
+            self.include_images = True
+            print("Images included in observation space.")
+        else:
+            # If no image observations
+            self.observation_space = gymnasium.spaces.Dict(
+                {
+                    "state": state_space,
+                }
+            )
+            self.include_images = False
+
+    def observation(self, obs):
+        # Flatten the state observation
+        if self.include_images:
+            obs = {
+                "state": flatten(
+                    self.proprio_space,
+                    {key: obs["state"][key] for key in self.proprio_keys},
+                ),
+                **(obs["images"]),
+            }
+        else:
+            obs = {
+                "state": flatten(
+                    self.proprio_space,
+                    {key: obs["state"][key] for key in self.proprio_keys},
+                ),
+            }
+
         return obs
-    
+
+    def reset(self, **kwargs):
+        obs, info =  self.env.reset(**kwargs)
+        return self.observation(obs), info
+
+
 
 class GripperCloseEnv(gymnasium.ActionWrapper):
     """

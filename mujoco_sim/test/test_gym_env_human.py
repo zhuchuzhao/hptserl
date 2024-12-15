@@ -6,7 +6,7 @@ import glfw
 import gymnasium
 
 from mujoco_sim import envs
-from mujoco_sim.envs.wrappers import SpacemouseIntervention, CustomObsWrapper, ObsWrapper, GripperCloseEnv, XYZGripperCloseEnv, XYZQzGripperCloseEnv
+from mujoco_sim.envs.wrappers import SpacemouseIntervention, ObsWrapper, GripperCloseEnv, XYZGripperCloseEnv, XYZQzGripperCloseEnv
 
 
 # glfw init
