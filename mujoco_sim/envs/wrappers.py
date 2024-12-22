@@ -4,6 +4,7 @@ import numpy as np
 from gymnasium.spaces import Box, flatten_space, flatten
 from mujoco_sim.devices.input_utils import input2action  # Relative import for input2action
 from mujoco_sim.devices.keyboard import Keyboard  # Relative import from devices.keyboard
+from mujoco_sim.devices.mujoco_keyboard import MujocoKeyboard  # Relative import from devices.mujoco_keyboard
 from mujoco_sim.devices.spacemouse import SpaceMouse  # Relative import from devices.spacemouse
 
     
@@ -185,7 +186,10 @@ class SpacemouseIntervention(gymnasium.ActionWrapper):
         except OSError:
             # If SpaceMouse is not found, fall back to Keyboard
             print("SpaceMouse not found, falling back to Keyboard.")
-            self.expert = Keyboard()
+            # self.expert = Keyboard()
+            self.expert = MujocoKeyboard()
+            viewer = env.unwrapped._viewer.viewer
+            viewer.set_external_key_callback(self.expert.external_key_callback)
 
         self.expert.start_control()
         self.last_intervene = 0

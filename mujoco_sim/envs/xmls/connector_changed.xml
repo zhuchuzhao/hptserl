@@ -40,8 +40,4 @@
         <scale framewidth="0.005" framelength="0.1"/>
     </visual>
 
-    <worldbody>
-        <camera name="top_view" pos="0 0 1" xyaxes="1 0 0 0 1 0"/>
-    </worldbody>
-
 </mujoco>

@@ -1,5 +1,6 @@
 from .device import Device
 from .keyboard import Keyboard
+from .mujoco_keyboard import MujocoKeyboard
 
 try:
     from .spacemouse import SpaceMouse

@@ -5,11 +5,15 @@ import gymnasium
 import mujoco
 import numpy as np
 from gymnasium import spaces
-from gymnasium.envs.mujoco.mujoco_rendering import MujocoRenderer
+from mujoco_sim.mujoco_rendering import MujocoRenderer
 
 from mujoco_sim.controllers import Controller
 from mujoco_sim.mujoco_gym_env import GymRenderingSpec, MujocoGymEnv
 from mujoco_sim.config import PegEnvConfig
+
+import glfw
+from OpenGL.GL import *
+
 
 _HERE = Path(__file__).parent
 _XML_PATH = _HERE / "xmls" / "ur5e_arena.xml"
@@ -27,7 +31,7 @@ class ur5ePegInHoleGymEnv(MujocoGymEnv):
         self.render_width = config.RENDERING_CONFIG["width"]
         self.render_height = config.RENDERING_CONFIG["height"]
         self.camera_id = (0, 1)  # Camera IDs for rendering
-        render_spec = GymRenderingSpec(
+        self.render_spec = GymRenderingSpec(
         height=config.RENDERING_CONFIG["height"],
         width=config.RENDERING_CONFIG["width"],
         )
@@ -38,7 +42,7 @@ class ur5ePegInHoleGymEnv(MujocoGymEnv):
             physics_dt=config.ENV_CONFIG["physics_dt"],
             time_limit=config.ENV_CONFIG["time_limit"],
             seed=config.ENV_CONFIG["seed"],
-            render_spec=render_spec,
+            render_spec=self.render_spec,
         )
 
         self._action_scale = config.ENV_CONFIG["action_scale"]
@@ -198,13 +202,13 @@ class ur5ePegInHoleGymEnv(MujocoGymEnv):
                             "front": spaces.Box(
                                 low=0,
                                 high=255,
-                                shape=(render_spec.height, render_spec.width, 3),
+                                shape=(self.render_spec.height, self.render_spec.width, 3),
                                 dtype=np.uint8,
                             ),
                             "wrist": spaces.Box(
                                 low=0,
                                 high=255,
-                                shape=(render_spec.height, render_spec.width, 3),
+                                shape=(self.render_spec.height, self.render_spec.width, 3),
                                 dtype=np.uint8,
                             ),
                         }
@@ -217,10 +221,17 @@ class ur5ePegInHoleGymEnv(MujocoGymEnv):
             dtype=np.float32,
         )
 
+        # glfw init
+        glfw.init()
+        self.width, self.height = glfw.get_video_mode(glfw.get_primary_monitor()).size
+
         self._viewer = MujocoRenderer(
             self.model,
             self.data,
-            width= render_spec.width, height=render_spec.height,
+            offscreen_width=self.render_spec.width,
+            offscreen_height=self.render_spec.height,
+            window_width=self.width,
+            window_height=self.height,
         )
         self._viewer.render(self.render_mode)
 
@@ -233,8 +244,6 @@ class ur5ePegInHoleGymEnv(MujocoGymEnv):
         # Reset arm to home position.
         self._data.qpos[self._ur5e_dof_ids] = self.ur5e_home
         self._data.qvel[self._ur5e_dof_ids] = 0  # Ensure joint velocities are zero
-        # self._data.qpos[self._hande_dof_ids] = np.array([0.01,0.01])   # Gripper closed
-        # self._data.ctrl[self._gripper_ctrl_id] = 101
 
         mujoco.mj_forward(self._model, self._data)
 
@@ -559,9 +568,18 @@ class ur5ePegInHoleGymEnv(MujocoGymEnv):
         obs["state"]["ur5e/wrist_torque"] = self.wrist_torque.astype(np.float32)
         # print("obs_torque:", obs["state"]["ur5e/wrist_torque"])
 
+
         if self.image_obs:
             obs["images"] = {}
-            obs["images"]["front"], obs["images"]["wrist"] = self.render()
+            if self.render_mode == "human":
+                rgb_arr_1 = self._viewer.viewer.rgb_1
+                rgb_arr_2 = self._viewer.viewer.rgb_2
+                rgb_img_1 = rgb_arr_1.reshape(self._viewer.viewer.offscreen_height, self._viewer.viewer.offscreen_width, 3)
+                rgb_img_2 = rgb_arr_2.reshape(self._viewer.viewer.offscreen_height, self._viewer.viewer.offscreen_width, 3)
+                obs["images"]["front"] = rgb_img_1[::-1, :, :]
+                obs["images"]["wrist"] = rgb_img_2[::-1, :, :]
+            else:
+                obs["images"]["front"], obs["images"]["wrist"] = self.render()
         else:
             connector_pos = self._data.sensor("connector_head_pos").data.astype(np.float32)
             connector_ori_quat = self._data.sensor("connector_head_quat").data.astype(np.float32)
@@ -577,6 +595,7 @@ class ur5ePegInHoleGymEnv(MujocoGymEnv):
 
         if self.render_mode == "human":
             self._viewer.render(self.render_mode)
+
         return obs
 
     def _compute_reward(self) -> float:

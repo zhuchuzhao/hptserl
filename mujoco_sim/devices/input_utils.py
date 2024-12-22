@@ -57,10 +57,13 @@ def input2action(device):
 
     # Flip z
     drotation[2] = -drotation[2]
-    # Scale rotation for teleoperation (tuned for OSC) -- gains tuned for each device
-    drotation = drotation * 1.5 if isinstance(device, Keyboard) else drotation * 50
-    dpos = dpos * 75 if isinstance(device, Keyboard) else dpos * 125
 
+    # # Scale rotation for teleoperation (tuned for OSC) -- gains tuned for each device
+    # drotation = drotation * 1.5 if isinstance(device, Keyboard) else drotation * 50
+    # dpos = dpos * 75 if isinstance(device, Keyboard) else dpos * 125
+
+    drotation = drotation * 1.5 if isinstance(device, MujocoKeyboard) else drotation * 50
+    dpos = dpos * 75 if isinstance(device, MujocoKeyboard) else dpos * 125
     # map 0 to -1 (open) and map 1 to 1 (closed)
     grasp = 1 if grasp else -1
 
