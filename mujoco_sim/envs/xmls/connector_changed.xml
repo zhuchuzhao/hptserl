@@ -1,26 +1,102 @@
 <mujoco model="connector">
-    
+    <!-- Make sure we use radians -->
     <compiler angle="radian" />
 
+    <!-- Optionally, set solver to Newton for more robust contact resolution -->
+    <option solver="Newton" />
+
     <asset>
-        <material name="connector_mat" reflectance="0" rgba="0.824 0.435 0.227 1" shininess="0.5" specular="0" />
-        <material name="connector_mat2" reflectance="0" rgba="0.412 0.2175 0.1135 1" shininess="0.5" specular="0" />
-        <texture builtin="flat" height="256" width="256" rgb1="1 1 1" rgb2="1 1 1" type="skybox" />
+        <material name="connector_mat" reflectance="0" 
+                  rgba="0.824 0.435 0.227 1" shininess="0.5" specular="0" />
+        <material name="connector_mat2" reflectance="0" 
+                  rgba="0.412 0.2175 0.1135 1" shininess="0.5" specular="0" />
+        <texture builtin="flat" height="256" width="256"
+                 rgb1="1 1 1" rgb2="1 1 1" type="skybox" />
     </asset>
-    
+
     <worldbody> 
-        <body name="connector_body" pos="0.35 0.0 .02" quat="0 0 1 0">
-        <freejoint name="connector" />
-        <geom solimp="0.9 0.95 0.001 0.5 2" solref="0.02 1" condim="6" contype="1" conaffinity="1" priority="1" name="connector_top" pos="-0.008774999618530274 0.0 0.00175" type="box" material="connector_mat" density="200" friction="0.95 0.3 0.1"  size="0.008774999618530274 0.015 0.00175" />
-            <site name="connector_top" type="sphere" pos="-0.008774999618530274 0.0 0.00175" quat="0.7071 0 0 0.7071" size="0.001 0.001 0.001" rgba="0.8 0.4 0.4 1"/>
-        <geom solimp="0.9 0.95 0.001 0.5 2" solref="0.02 1" condim="6" contype="1" conaffinity="1" priority="1" name="connector_head" pos="-0.008774999618530274 0.0 -0.007" type="box" material="connector_mat2" density="200" friction="0.95 0.3 0.1"  size="0.008774999618530274 0.015 0.007" />
-            <site name="connector_head" type="sphere" pos="-0.008774999618530274 0.0 -0.007" quat="0.7071 0 0 0.7071" size="0.001 0.001 0.001" rgba="0.8 0.4 0.4 1"/>
-            <site name="connector_roof" type="sphere" pos="-0.008774999618530274 0.0 -0.014" quat="0.7071 0 0 0.7071" size="0.001 0.001 0.001" rgba="0.8 0.4 0.4 1"/>
-        <geom solimp="0.9 0.95 0.001 0.5 2" solref="0.02 1" condim="6" contype="1" conaffinity="1" priority="1" name="connector_center" pos="-0.007689999759197235 2.0324375890960812e-19 0.013100000381469728" type="box" material="connector_mat" density="100" friction="0.95 0.3 0.1"  size="0.0060399997830390935 0.014175000190734864 0.009600000381469726" />
-            <site name="connector_center" type="sphere" pos="-0.007689999759197235 2.0324375890960812e-19 0.013100000381469728" quat="0.7071 0 0 0.7071" size="0.001 0.001 0.001" rgba="0.8 0.4 0.4 1"/>
-            <site name="connector_bottom" type="sphere" pos="-0.007689999759197235 2.0324375890960812e-19 0.022700001" quat="0.7071 0 0 0.7071" size="0.001 0.001 0.001" rgba="0.8 0.4 0.4 1"/>
-        <geom  solimp="0.9 0.95 0.001 0.5 2" solref="0.02 1" condim="6" contype="1" conaffinity="1" priority="1" name="connector_front" pos="-0.01663000011444092 4.9998760223388105e-06 0.013100000381469726" type="box" material="connector_mat" density="100" friction="0.95 0.3 0.1"  size="0.00290000057220459 0.006555000066757202 0.009600000381469726" />
-            <site name="connector_front" type="sphere" pos="-0.01663000011444092 4.9998760223388105e-06 0.013100000381469726" quat="0.7071 0 0 0.7071" size="0.001 0.001 0.001" rgba="1 0 0 1"/>
+        <body name="connector_body" pos="0.35 0.0 0.02" quat="0 0 1 0">
+            <freejoint name="connector" />
+
+            <!-- Top box -->
+            <geom name="connector_top" 
+                  type="box"
+                  pos="-0.008775 0.0 0.00175"
+                  size="0.008775 0.015 0.00175"
+                  material="connector_mat"
+                  density="200"
+                  friction="0.95 0.3 0.1"
+                  condim="6"
+                  solimp="0.998 0.998 0.001" solref="0.02 1" contype="1" conaffinity="1" priority="1"/>
+            <site name="connector_top" 
+                  type="sphere" 
+                  pos="-0.008775 0.0 0.00175"
+                  quat="0.7071 0 0 0.7071" 
+                  size="0.001 0.001 0.001"
+                  rgba="0.8 0.4 0.4 1"/>
+
+            <!-- Head box -->
+            <geom name="connector_head"
+                  type="box"
+                  pos="-0.008775 0.0 -0.007"
+                  size="0.008775 0.015 0.007"
+                  material="connector_mat2"
+                  density="200"
+                  friction="0.95 0.3 0.1"
+                  condim="6"
+                  solimp="0.998 0.998 0.001" solref="0.02 1" contype="1" conaffinity="1" priority="1"/>
+            <site name="connector_head"
+                  type="sphere"
+                  pos="-0.008775 0.0 -0.007"
+                  quat="0.7071 0 0 0.7071"
+                  size="0.001 0.001 0.001"
+                  rgba="0.8 0.4 0.4 1"/>
+            <site name="connector_roof"
+                  type="sphere"
+                  pos="-0.008775 0.0 -0.014"
+                  quat="0.7071 0 0 0.7071"
+                  size="0.001 0.001 0.001"
+                  rgba="0.8 0.4 0.4 1"/>
+
+            <!-- Center box -->
+            <geom name="connector_center"
+                  type="box"
+                  pos="-0.00769 0.0 0.0131"
+                  size="0.00604 0.014175 0.0096"
+                  material="connector_mat"
+                  density="100"
+                  friction="0.95 0.3 0.1"
+                  condim="6"
+                  solimp="0.998 0.998 0.001" solref="0.02 1" contype="1" conaffinity="1" priority="1"/>
+            <site name="connector_center"
+                  type="sphere"
+                  pos="-0.00769 0.0 0.0131"
+                  quat="0.7071 0 0 0.7071"
+                  size="0.001 0.001 0.001"
+                  rgba="0.8 0.4 0.4 1"/>
+            <site name="connector_bottom"
+                  type="sphere"
+                  pos="-0.00769 0.0 0.0227"
+                  quat="0.7071 0 0 0.7071"
+                  size="0.001 0.001 0.001"
+                  rgba="0.8 0.4 0.4 1"/>
+
+            <!-- Front box -->
+            <geom name="connector_front"
+                  type="box"
+                  pos="-0.01663 0.0 0.0131"
+                  size="0.0029 0.006555 0.0096"
+                  material="connector_mat"
+                  density="100"
+                  friction="0.95 0.3 0.1"
+                  condim="6"
+                  solimp="0.998 0.998 0.001" solref="0.02 1" contype="1" conaffinity="1" priority="1"/>
+            <site name="connector_front"
+                  type="sphere"
+                  pos="-0.01663 0.0 0.0131"
+                  quat="0.7071 0 0 0.7071"
+                  size="0.001 0.001 0.001"
+                  rgba="1 0 0 1"/>
         </body>
     </worldbody>
 
@@ -39,5 +115,4 @@
         <global offwidth="1920" offheight="1080"/>
         <scale framewidth="0.005" framelength="0.1"/>
     </visual>
-
 </mujoco>

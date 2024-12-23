@@ -1,4 +1,5 @@
 import numpy as np
+import mujoco
 
 
 class PegEnvConfig():
@@ -9,9 +10,18 @@ class PegEnvConfig():
             "action_scale": np.array([1,1, 1]),  # Scaling factors for position, orientation, and gripper control
             "control_dt": 0.02,  # Time step for controller updates
             "physics_dt": 0.002,  # Time step for physics simulation
-            "time_limit": 20.0,  # Time limit for each episode
+            "time_limit": 30.0,  # Time limit for each episode
             "seed": 0,  # Random seed
             "image_obs": False,  # Use image observations
+        }
+
+        self.DEFAULT_CAM_CONFIG = {
+        'type': mujoco.mjtCamera.mjCAMERA_FREE,  # Camera type
+        'fixedcamid': 0,                            # ID of the fixed camera
+        'lookat': np.array([0.0, 0.0, 0.0]),        # Point the camera looks at
+        'distance': 1.1,                            # Distance from the lookat point
+        'azimuth': 180.0,                           # Horizontal angle
+        'elevation': -30.0,                         # Vertical angle
         }
 
         # UR5e Robot Configuration

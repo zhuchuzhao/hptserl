@@ -162,7 +162,7 @@ class MujocoKeyboard:
             key (int): Key code
         """
         try:
-            if key == glfw.KEY_SPACE:
+            if key == glfw.KEY_RIGHT_SHIFT:
                 self.grasp = not self.grasp  # toggle gripper
 
             elif key == glfw.KEY_Q:

@@ -26,7 +26,8 @@ def sample():
 
 obs, info = env.reset()
 
-for i in range(3000):
+# for i in range(3000):
+while True:
     a = sample()
     obs, rew, done, truncated, info = env.step(a)
 

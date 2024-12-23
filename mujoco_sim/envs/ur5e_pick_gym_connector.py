@@ -49,6 +49,8 @@ class ur5ePegInHoleGymEnv(MujocoGymEnv):
         self.render_mode = render_mode
         self.image_obs = config.ENV_CONFIG["image_obs"]
 
+        self.default_cam_config = config.DEFAULT_CAM_CONFIG
+
 
         # UR5e-specific configuration
         self.ur5e_home = config.UR5E_CONFIG["home_position"]
@@ -232,6 +234,7 @@ class ur5ePegInHoleGymEnv(MujocoGymEnv):
             offscreen_height=self.render_spec.height,
             window_width=self.width,
             window_height=self.height,
+            default_cam_config=self.default_cam_config
         )
         self._viewer.render(self.render_mode)
 

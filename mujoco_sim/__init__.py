@@ -7,18 +7,15 @@ __all__ = [
 
 from gymnasium.envs.registration import register, WrapperSpec
 
-
-
-
 register(
     id="ur5ePegInHoleGymEnv_state-v0",
     entry_point="mujoco_sim.envs:ur5ePegInHoleGymEnv",
     additional_wrappers=(
-        WrapperSpec(
-            name='GripperCloseEnv',
-            entry_point='mujoco_sim.envs.wrappers:GripperCloseEnv',  # Replace with actual module path
-            kwargs={},  # Add any necessary kwargs for this wrapper
-        ),
+        # WrapperSpec(
+        #     name='GripperCloseEnv',
+        #     entry_point='mujoco_sim.envs.wrappers:GripperCloseEnv',  # Replace with actual module path
+        #     kwargs={},  # Add any necessary kwargs for this wrapper
+        # ),
         WrapperSpec(
             name='SpacemouseIntervention',
             entry_point='mujoco_sim.envs.wrappers:SpacemouseIntervention',
@@ -66,11 +63,11 @@ register(
     id="ur5ePegInHoleGymEnv_vision-v0",
     entry_point="mujoco_sim.envs:ur5ePegInHoleGymEnv",
     additional_wrappers=(
-        WrapperSpec(
-            name='GripperCloseEnv',
-            entry_point='mujoco_sim.envs.wrappers:GripperCloseEnv',  # Replace with actual module path
-            kwargs={},  # Add any necessary kwargs for this wrapper
-        ),
+        # WrapperSpec(
+        #     name='GripperCloseEnv',
+        #     entry_point='mujoco_sim.envs.wrappers:GripperCloseEnv',  # Replace with actual module path
+        #     kwargs={},  # Add any necessary kwargs for this wrapper
+        # ),
         WrapperSpec(
             name='SpacemouseIntervention',
             entry_point='mujoco_sim.envs.wrappers:SpacemouseIntervention',

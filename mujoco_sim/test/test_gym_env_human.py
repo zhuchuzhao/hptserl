@@ -17,7 +17,7 @@ env = envs.ur5ePegInHoleGymEnv()
 # env = XYZQzGripperCloseEnv(env)
 env = GripperCloseEnv(env)
 
-env = SpacemouseIntervention(env)
+# env = SpacemouseIntervention(env)
 # env = CustomObsWrapper(env)
 
 env = gymnasium.wrappers.FlattenObservation(env)
