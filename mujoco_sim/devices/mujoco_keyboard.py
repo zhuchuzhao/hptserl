@@ -17,6 +17,8 @@ class MujocoKeyboard:
     """
 
     def __init__(self, pos_sensitivity=0.005*0.03, rot_sensitivity=0.005*5):
+        self._display_controls()
+
         self._reset_internal_state()
 
         self._reset_state = 0
@@ -25,6 +27,29 @@ class MujocoKeyboard:
 
         self.pos_sensitivity = pos_sensitivity
         self.rot_sensitivity = rot_sensitivity
+
+    @staticmethod
+    def _display_controls():
+        """
+        Method to pretty print controls.
+        """
+
+        def print_command(char, info):
+            char += " " * (10 - len(char))
+            print("{}\t{}".format(char, info))
+
+        print("")
+        print_command("Keys", "Command")
+        print_command("q", "reset simulation")
+        print_command("right shift", "toggle gripper (open/close)")
+        print_command("up/down", "move arm along x-axis")
+        print_command("left/right", "move arm along y-axis")
+        print_command("l/p", "move arm along z-axis")
+        print_command("n/m", "rotate arm about x-axis")
+        print_command("j/k", "rotate arm about y-axis")
+        print_command("i/o", "rotate arm about z-axis")
+        print("")
+
 
     def _reset_internal_state(self):
         """

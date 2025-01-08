@@ -28,11 +28,11 @@ class PegEnvConfig():
         self.UR5E_CONFIG = {
             "home_position": np.array([-1.5708, -1.5708, 1.5708, -1.5708, -1.5708, 0]),  # Home joint angles
             "reset_position": np.array([-1.97248201, -1.80736221,  2.08230528, -1.84573939, -1.57079633,  1.16911064]),  # Reset joint angles
-            "default_cartesian_bounds": np.array([[0.1, -0.3, 0.0], [0.5, 0.3, 0.5]]),  # Workspace boundaries in Cartesian space
+            "default_cartesian_bounds": np.array([[0.2, -0.3, 0.0], [0.5, 0.3, 0.5]]),  # Workspace boundaries in Cartesian space
             "restrict_cartesian_bounds": False,  # Whether to restrict the end effector to the Cartesian bounds
             "default_port_pos": np.array([0.4, 0.0, 0.0]),  # Default port position
             "port_sampling_bounds": np.array([[0.395, -0.05, 0], [0.405, 0.05, 0.1]]),  # Sampling range for port placement
-            "connector_sampling_bounds": np.asarray([[0.15, -0.20], [0.35, 0.20]]),
+            "connector_sampling_bounds": np.asarray([[0.3, -0.1], [0.4, 0.1]]),
             "port_xy_randomize": False,  # Randomize port xy placement
             "port_z_randomize": False,  # Randomize port z placement
             "port_orientation_randomize": False,  # Randomize port placement
@@ -58,8 +58,10 @@ class PegEnvConfig():
             "rot_damping_ratio": 0.286,  # Damping ratio for rotational control
             "error_tolerance_pos": 0.001,  # Position error tolerance
             "error_tolerance_ori": 0.001,  # Orientation error tolerance
-            "max_pos_error": 0.01,  # Maximum position error
-            "max_ori_error": 0.03,  # Maximum orientation error
+            "trans_clip_min": np.array([-0.01, -0.01, -0.01]),  # Translational negative clipping limits
+            "trans_clip_max": np.array([0.01, 0.01, 0.01]),  # Translational positive clipping limits
+            "rot_clip_min": np.array([-0.03, -0.03, -0.03]),  # Rotational negative clipping limits
+            "rot_clip_max": np.array([0.03, 0.03, 0.03]),  # Rotational positive clipping
             "method": "dynamics",  # Control method ("dynamics", "pinv", "svd", etc.)
             "inertia_compensation": False,  # Whether to compensate for inertia
             "pos_gains": (100, 100, 100),  # Proportional gains for position control

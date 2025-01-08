@@ -27,8 +27,6 @@ class Controller:
         self.rot_damping_ratio = config.get("rot_damping_ratio", 0.286)
         self.error_tolerance_pos = config.get("error_tolerance_pos", 0.001)
         self.error_tolerance_ori = config.get("error_tolerance_ori", 0.001)
-        self.max_pos_error = config.get("max_pos_error", 0.01)
-        self.max_ori_error = config.get("max_ori_error", 0.03)
         self.method = config.get("method", "dynamics")
         self.inertia_compensation = config.get("inertia_compensation", False)
         self.pos_gains = config.get("pos_gains", (100, 100, 100))
@@ -36,6 +34,12 @@ class Controller:
         self.pos_kd = config.get("pos_kd", None)
         self.ori_kd = config.get("ori_kd", None)
         self.max_angvel = config.get("max_angvel", 4)
+
+        self.trans_clip_min = config.get("trans_clip_min", np.array([-0.01, -0.01, -0.01]))
+        self.trans_clip_max = config.get("trans_clip_max", np.array([0.01,  0.01,  0.01]))
+        self.rot_clip_min = config.get("rot_clip_min", np.array([-0.05, -0.05, -0.05]))
+        self.rot_clip_max = config.get("rot_clip_max", np.array([ 0.05,  0.05,  0.05]))
+
 
         # Preallocate memory for commonly used variables
         self.quat = np.zeros(4)
@@ -56,8 +60,10 @@ class Controller:
         rot_damping_ratio: Optional[float] = None,        
         error_tolerance_pos: Optional[float] = None,
         error_tolerance_ori: Optional[float] = None,
-        max_pos_error: Optional[float] = None,
-        max_ori_error: Optional[float] = None,
+        trans_clip_min: Optional[np.ndarray] = None,
+        trans_clip_max: Optional[np.ndarray] = None,
+        rot_clip_min: Optional[np.ndarray] = None,
+        rot_clip_max: Optional[np.ndarray] = None,
         max_angvel: Optional[float] = None,
         pos_gains: Optional[Union[Tuple[float, float, float], np.ndarray]] = None,
         ori_gains: Optional[Union[Tuple[float, float, float], np.ndarray]] = None,
@@ -74,10 +80,14 @@ class Controller:
             self.error_tolerance_pos = error_tolerance_pos
         if error_tolerance_ori is not None:
             self.error_tolerance_ori = error_tolerance_ori
-        if max_pos_error is not None:
-            self.max_pos_error = max_pos_error
-        if max_ori_error is not None:
-            self.max_ori_error = max_ori_error
+        if trans_clip_min is not None:
+            self.trans_clip_min = np.asarray(trans_clip_min)
+        if trans_clip_max is not None:
+            self.trans_clip_max = np.asarray(trans_clip_max)
+        if rot_clip_min is not None:
+            self.rot_clip_min = np.asarray(rot_clip_min)
+        if rot_clip_max is not None:
+            self.rot_clip_max = np.asarray(rot_clip_max)
         if max_angvel is not None:
             self.max_angvel = max_angvel
         if pos_gains is not None:
@@ -125,9 +135,6 @@ class Controller:
         kp_kv_pos = self.compute_gains(self.pos_gains, self.pos_kd, self.method, self.trans_damping_ratio)
         kp_kv_ori = self.compute_gains(self.ori_gains, self.ori_kd, self.method, self.rot_damping_ratio)
 
-        ddx_max = self.max_pos_error if self.max_pos_error is not None else 0.0
-        dw_max = self.max_ori_error if self.max_ori_error is not None else 0.0
-
         q = self.data.qpos[self.dof_ids]
         dq = self.data.qvel[self.dof_ids]
 
@@ -141,10 +148,8 @@ class Controller:
         dx_err = J_v @ dq
 
         self.x_err_norm = np.linalg.norm(x_err)
+        x_err = np.clip(x_err, self.trans_clip_min, self.trans_clip_max)
 
-        if ddx_max > 0.0 and self.x_err_norm > ddx_max:
-            x_err = np.clip(x_err, -ddx_max, ddx_max)
-        
         # Check positional error tolerance
         if self.x_err_norm < self.error_tolerance_pos:
             # If the error is within tolerance, set it to zero
@@ -164,9 +169,7 @@ class Controller:
         w_err = J_w @ dq
 
         self.ori_err_norm = np.linalg.norm(self.ori_err)
-
-        if dw_max > 0.0 and self.ori_err_norm > dw_max:
-            self.ori_err = np.clip(self.ori_err, -dw_max, dw_max) 
+        self.ori_err = np.clip(self.ori_err, self.rot_clip_min, self.rot_clip_max)
 
         # Check orientation error tolerance
         if self.ori_err_norm < self.error_tolerance_ori:
@@ -181,53 +184,29 @@ class Controller:
 
         self.error = np.concatenate([ddx, dw], axis=0)
 
-        # # wrist_force = self._data.sensor("ur5e/wrist_force").data
         # bodyid = self.model.site_bodyid[self.model.site("attachment_site").id]
         # bodyid2 = self.model.body("connector_body").id
-
         # rootid = self.model.body_rootid[bodyid]
         # cfrc_int = self.data.cfrc_int[bodyid].copy()
         # total_mass = self.model.body_subtreemass[bodyid]
         # gravity_force = -self.model.opt.gravity * total_mass
-        # # print("Gravity Force: ", gravity_force)
         # wrist_force = cfrc_int[3:] - gravity_force
         # print("Wrist Force before: ", wrist_force)
-
-        # thresh = -2
+        # thresh = -0.1
         # wrist_force = [a_ - thresh if a_ < thresh else 0 for a_ in wrist_force]
-
         # dif = self.data.site_xpos[self.model.site("attachment_site").id] - self.data.subtree_com[rootid]
         # wrist_torque = cfrc_int[:3] - np.cross(dif, cfrc_int[3:])
-
         # print("Wrist Force: ", wrist_force)
         # print("Wrist Torque: ", wrist_torque)
         # direction_vector = np.array([0, 0, 1, 0, 0, 0])
         # print("Error: ", self.error)
-        # compensation = 0.05 * np.array(wrist_force, dtype=np.float64)* direction_vector[:3]
+        # compensation = 0.08 * np.array(wrist_force, dtype=np.float64)* direction_vector[:3]
         # print("Compensation: ", compensation)
         # self.error[:3] -= compensation
         # print("Error_after: ", self.error)
-        # # print("cfrc_ext: ", self.data.cfrc_ext[bodyid2][3:])
 
-        # # self.error[3:] -= 0.01 *np.array(wrist_torque, dtype=np.float64)* direction_vector[3:]
 
         if self.method == "dynamics":
-            # Mx_inv_v = J_v @ M_inv @ J_v.T
-            # Mx_inv_w = J_w @ M_inv @ J_w.T
-
-            # # Compute Mx_v
-            # if abs(np.linalg.det(Mx_inv_v)) >= 1e-2:
-            #     Mx_v = np.linalg.inv(Mx_inv_v)
-            # else:
-            #     Mx_v = np.linalg.pinv(Mx_inv_v, rcond=1e-2)
-
-            # # Compute Mx_w
-            # if abs(np.linalg.det(Mx_inv_w)) >= 1e-2:
-            #     Mx_w = np.linalg.inv(Mx_inv_w)
-            # else:
-            #     Mx_w = np.linalg.pinv(Mx_inv_w, rcond=1e-2)
-
-
             if self.inertia_compensation:
                 mujoco.mj_fullM(self.model, self.M, self.data.qM)
                 M = self.M[self.dof_ids, :][:, self.dof_ids]

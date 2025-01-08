@@ -25,12 +25,12 @@
       <default class="hande_collision">
         <geom type="mesh" contype="0" conaffinity="3" group="3" solimp="0.99 0.995 0.01" solref="0.01 1" priority="1" condim="3" friction="1 0.005 0.0001" margin="0.0001"/>
         <default class="pad_box2">
-          <geom mass="0"  contype="1" conaffinity="1" type="box" pos="2.79852883e-02 -3.19443699e-05  3.65e-02" size="0.003 0.0105     0.01 " friction="0.7"
-            solimp="0.95 0.99 0.001" solref="0.004 1" priority="1" rgba="0.55 0.55 0.55 1"/>
+          <geom mass="0"  contype="1" conaffinity="1" type="box" pos="2.79852883e-02 -3.19443699e-05  3.65e-02" size="0.003 0.0105     0.01 " friction="2 0.05 0.001"
+            solimp="0.95 0.99 0.001" solref="0.001 1" priority="1" rgba="0.55 0.55 0.55 1"/>
         </default>
         <default class="pad_box1">
-          <geom mass="0"  contype="1" conaffinity="1" type="box" pos="-2.79852883e-02 3.19443699e-05  3.65e-02" size="0.003 0.0105     0.01 " friction="0.6"
-            solimp="0.95 0.99 0.001" solref="0.004 1" priority="1" rgba="0.45 0.45 0.45 1"/>
+          <geom mass="0"  contype="1" conaffinity="1" type="box" pos="-2.79852883e-02 3.19443699e-05  3.65e-02" size="0.003 0.0105     0.01 " friction="2 0.05 0.001"
+            solimp="0.95 0.99 0.001" solref="0.001 1" priority="1" rgba="0.45 0.45 0.45 1"/>
         </default>
       </default>
       <default class="collision">
@@ -213,10 +213,10 @@
 
     <!-- Hand-E Actuator -->
     <general name="hande_fingers_actuator" class="hande" tendon="split" ctrlrange="0 255"
-      forcerange="-180 180" gaintype="affine" biastype="affine" gainprm="0.00980392"
+      forcerange="-5 5" gaintype="affine" biastype="affine" gainprm="0.00980392"
       biasprm="0 -100 -10"/>
   </actuator>
-
+<!-- gainprm="0.00980392" -->
   <sensor>
     <!-- Joint positions for UR5e -->
     <jointpos name="ur5e/joint1_pos" joint="shoulder_pan_joint"/>

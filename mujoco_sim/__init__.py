@@ -25,11 +25,11 @@ register(
             name='ObsWrapper',
             entry_point='mujoco_sim.envs.wrappers:ObsWrapper',  # Replace with actual module path
             kwargs={
-                'proprio_keys': [
-                    "ur5e/tcp_pose",
-                    "ur5e/wrist_force",
-                    "ur5e/wrist_torque",
-                ],
+                # 'proprio_keys': [
+                #     "ur5e/tcp_pose",
+                #     "ur5e/wrist_force",
+                #     "ur5e/wrist_torque",
+                # ],
             },     
                         ),
     ),

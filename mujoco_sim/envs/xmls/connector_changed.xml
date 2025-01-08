@@ -2,9 +2,7 @@
     <!-- Make sure we use radians -->
     <compiler angle="radian" />
 
-    <!-- Optionally, set solver to Newton for more robust contact resolution -->
-    <option solver="Newton" />
-
+#
     <asset>
         <material name="connector_mat" reflectance="0" 
                   rgba="0.824 0.435 0.227 1" shininess="0.5" specular="0" />
@@ -15,7 +13,7 @@
     </asset>
 
     <worldbody> 
-        <body name="connector_body" pos="0.35 0.0 0.02" quat="0 0 1 0">
+        <body name="connector_body" pos="0.35 0.0 0.02" quat="0 1 0 0">
             <freejoint name="connector" />
 
             <!-- Top box -->
@@ -25,7 +23,7 @@
                   size="0.008775 0.015 0.00175"
                   material="connector_mat"
                   density="200"
-                  friction="0.95 0.3 0.1"
+                  friction="2.0 0.3 0.1"
                   condim="6"
                   solimp="0.998 0.998 0.001" solref="0.02 1" contype="1" conaffinity="1" priority="1"/>
             <site name="connector_top" 
@@ -42,7 +40,7 @@
                   size="0.008775 0.015 0.007"
                   material="connector_mat2"
                   density="200"
-                  friction="0.95 0.3 0.1"
+                  friction="2.0 0.3 0.1"
                   condim="6"
                   solimp="0.998 0.998 0.001" solref="0.02 1" contype="1" conaffinity="1" priority="1"/>
             <site name="connector_head"
@@ -65,7 +63,7 @@
                   size="0.00604 0.014175 0.0096"
                   material="connector_mat"
                   density="100"
-                  friction="0.95 0.3 0.1"
+                  friction="2.0 0.3 0.1"
                   condim="6"
                   solimp="0.998 0.998 0.001" solref="0.02 1" contype="1" conaffinity="1" priority="1"/>
             <site name="connector_center"
@@ -88,7 +86,7 @@
                   size="0.0029 0.006555 0.0096"
                   material="connector_mat"
                   density="100"
-                  friction="0.95 0.3 0.1"
+                  friction="2.0 0.3 0.1"
                   condim="6"
                   solimp="0.998 0.998 0.001" solref="0.02 1" contype="1" conaffinity="1" priority="1"/>
             <site name="connector_front"

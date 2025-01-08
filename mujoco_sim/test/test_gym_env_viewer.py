@@ -5,7 +5,7 @@ import numpy as np
 import gymnasium
 from mujoco_sim import envs
 from mujoco_sim.utils.viz import SliderController
-from mujoco_sim.envs.wrappers import SpacemouseIntervention, CustomObsWrapper, ObsWrapper, GripperCloseEnv, XYZGripperCloseEnv, XYZQzGripperCloseEnv
+from mujoco_sim.envs.wrappers import GripperCloseEnv, SpacemouseIntervention
 
 # Initialize the environment and controller
 env = envs.ur5ePegInHoleGymEnv()
@@ -14,9 +14,9 @@ action_spec = env.action_space
 # Define indices for UR5e DOF and gripper
 ur5e_dof_indices = env._ur5e_dof_ids
 gripper_dof_index = env._gripper_ctrl_id
-env = GripperCloseEnv(env)
+# env = GripperCloseEnv(env)
 env = SpacemouseIntervention(env)
-env = CustomObsWrapper(env)
+
 env = gymnasium.wrappers.FlattenObservation(env)
 
 # Unwrapping the environment

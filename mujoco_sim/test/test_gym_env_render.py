@@ -1,5 +1,4 @@
 import time
-
 import gymnasium
 import mujoco
 import mujoco.viewer

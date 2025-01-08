@@ -245,7 +245,7 @@ class ur5ePegInHoleGymEnv(MujocoGymEnv):
         mujoco.mj_resetData(self._model, self._data)
 
         # Reset arm to home position.
-        self._data.qpos[self._ur5e_dof_ids] = self.ur5e_home
+        self._data.qpos[self._ur5e_dof_ids] = self.ur5e_reset
         self._data.qvel[self._ur5e_dof_ids] = 0  # Ensure joint velocities are zero
 
         mujoco.mj_forward(self._model, self._data)
@@ -385,21 +385,6 @@ class ur5ePegInHoleGymEnv(MujocoGymEnv):
 
         mujoco.mj_forward(self._model, self._data)
 
-        # Reset the arm to the port position.  
-        step_count = 0
-        while step_count < 500:
-            q, dq = self.controller.control(
-                pos=self._data.mocap_pos[0].copy(),
-                ori=self._data.mocap_quat[0].copy(),
-            )
-            self._data.qpos[self._ur5e_dof_ids] = q
-            mujoco.mj_forward(self._model, self._data)
-            error = self.controller.ori_err_norm + self.controller.x_err_norm
-            if error <= self.reset_tolerance:
-                break  # Goal reached
-            step_count += 1
-        print(f"Resetting environment after {step_count} steps.")
-
         # Reset the connector position
         plate_pos = self._data.geom("plate").xpos
         plate_size = self._model.geom("plate").size
@@ -421,7 +406,22 @@ class ur5ePegInHoleGymEnv(MujocoGymEnv):
         self._data.jnt("connector").qpos[:2] = (connector_xy)
 
         # # Reset mocap body to home position.
-        # self._data.mocap_pos[0] = (*connector_xy + 0.01, self._connector_z + 0.025)
+        # self._data.mocap_pos[0] = (*connector_xy,  self._data.jnt("connector").qpos[2]+ 0.01)
+
+        # Reset the arm to the port position.  
+        step_count = 0
+        while step_count < 500:
+            q, dq = self.controller.control(
+                pos=self._data.mocap_pos[0].copy(),
+                ori=self._data.mocap_quat[0].copy(),
+            )
+            self._data.qpos[self._ur5e_dof_ids] = q
+            mujoco.mj_forward(self._model, self._data)
+            error = self.controller.ori_err_norm + self.controller.x_err_norm
+            if error <= self.reset_tolerance:
+                break  # Goal reached
+            step_count += 1
+        print(f"Resetting environment after {step_count} steps.")
 
         # Reset the environment time to zero
         obs = self._compute_observation()
@@ -569,7 +569,6 @@ class ur5ePegInHoleGymEnv(MujocoGymEnv):
         dif = self._data.site_xpos[self._attatchment_id] - self._data.subtree_com[rootid]
         self.wrist_torque = cfrc_int[:3] - np.cross(dif, cfrc_int[3:])
         obs["state"]["ur5e/wrist_torque"] = self.wrist_torque.astype(np.float32)
-        # print("obs_torque:", obs["state"]["ur5e/wrist_torque"])
 
 
         if self.image_obs:

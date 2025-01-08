@@ -27,7 +27,6 @@ class ObsWrapper(gymnasium.ObservationWrapper):
         # Flatten the state observation space
         state_space = flatten_space(self.proprio_space)
 
-        print(self.env.observation_space.spaces)
         if "images" in self.env.observation_space.spaces:
             self.observation_space = gymnasium.spaces.Dict(
                 {
