@@ -247,4 +247,4 @@ class Controller:
         q_max = self.model.actuator_ctrlrange[:6, 1]
         np.clip(q, q_min, q_max, out=q)
 
-        return q, dq
+        return q

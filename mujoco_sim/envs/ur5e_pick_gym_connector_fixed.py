@@ -16,9 +16,9 @@ from OpenGL.GL import *
 
 
 _HERE = Path(__file__).parent
-_XML_PATH = _HERE / "xmls" / "ur5e_arena.xml"
+_XML_PATH = _HERE / "xmls" / "ur5e_arena1.xml"
 
-class ur5ePegInHoleGymEnv(MujocoGymEnv):
+class ur5ePegInHoleFixedGymEnv(MujocoGymEnv):
     """UR5e peg-in-hole environment in Mujoco."""
     def __init__(self, render_mode: Literal["rgb_array", "human"] = "rgb_array", config=None):
         # Initialize configuration
@@ -357,6 +357,8 @@ class ur5ePegInHoleGymEnv(MujocoGymEnv):
             port_xyz[2] + 0.1
             ])
 
+        mujoco.mj_forward(self._model, self._data)
+
         if self.mocap_orient:
             quat_des = np.zeros(4)
             mujoco.mju_mat2Quat(quat_des, self.data.site_xmat[self._port_site_id])
@@ -385,33 +387,10 @@ class ur5ePegInHoleGymEnv(MujocoGymEnv):
 
         mujoco.mj_forward(self._model, self._data)
 
-        # Reset the connector position
-        plate_pos = self._data.geom("plate").xpos
-        plate_size = self._model.geom("plate").size
-        connector_radius = self._model.geom("connector_top").size # Assuming the first size is the radius
-
-        plate_bounds = [
-            [plate_pos[0] - plate_size[0] - connector_radius[0], plate_pos[1] - plate_size[1] - connector_radius[0]],
-            [plate_pos[0] + plate_size[0] + connector_radius[1], plate_pos[1] + plate_size[1] + connector_radius[1]],
-        ]
-
-        # Sample connector position avoiding the plate bounds
-        while True:
-            connector_xy = np.random.uniform(*self.connector_sampling_bounds)
-            if not (
-                plate_bounds[0][0] <= connector_xy[0] <= plate_bounds[1][0]
-                and plate_bounds[0][1] <= connector_xy[1] <= plate_bounds[1][1]
-            ):
-                break
-        self._data.jnt("connector").qpos[:2] = (connector_xy)
-
-        # # Reset mocap body to home position.
-        # self._data.mocap_pos[0] = (*connector_xy,  self._data.jnt("connector").qpos[2]+ 0.01)
-
         # Reset the arm to the port position.  
         step_count = 0
         while step_count < 500:
-            q, dq = self.controller.control(
+            q = self.controller.control(
                 pos=self._data.mocap_pos[0].copy(),
                 ori=self._data.mocap_quat[0].copy(),
             )
@@ -483,7 +462,7 @@ class ur5ePegInHoleGymEnv(MujocoGymEnv):
 
         for _ in range(self._n_substeps):
 
-            ctrl, _ = self.controller.control(
+            ctrl = self.controller.control(
                 pos=self._data.mocap_pos[0].copy(),
                 ori=self._data.mocap_quat[0].copy(),
             )  
