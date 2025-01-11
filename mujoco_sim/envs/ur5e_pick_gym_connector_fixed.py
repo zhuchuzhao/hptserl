@@ -65,8 +65,8 @@ class ur5ePegInHoleFixedGymEnv(MujocoGymEnv):
         self.port_z_randomize = config.UR5E_CONFIG["port_z_randomize"]
         self.port_orientation_randomize = config.UR5E_CONFIG["port_orientation_randomize"]
         self.max_port_orient = config.UR5E_CONFIG["max_port_orient_randomize"]
-        self.mocap_orient = config.UR5E_CONFIG["mocap_orient"]
-        self.max_mocap_orient = config.UR5E_CONFIG["max_mocap_orient_randomize"]
+        self.tcp_orient_randomize = config.UR5E_CONFIG["tcp_orient_randomize"]
+        self.max_tcp_orient_randomize = config.UR5E_CONFIG["max_tcp_orient_randomize"]
         self.tcp_randomization_bounds = config.UR5E_CONFIG["tcp_randomization_bounds"]
         self.reset_tolerance = config.UR5E_CONFIG["reset_tolerance"]
         self.gravity_compensation = config.CONTROLLER_CONFIG.get("gravity_compensation", True)
@@ -359,16 +359,19 @@ class ur5ePegInHoleFixedGymEnv(MujocoGymEnv):
 
         mujoco.mj_forward(self._model, self._data)
 
-        if self.mocap_orient:
-            quat_des = np.zeros(4)
-            mujoco.mju_mat2Quat(quat_des, self.data.site_xmat[self._port_site_id])
-            self._data.mocap_quat[0] = quat_des
-        else:
+        quat_des = np.zeros(4)
+        mujoco.mju_mat2Quat(quat_des, self.data.site_xmat[self._port_site_id])
+        self._data.mocap_quat[0] = quat_des
+
+        mujoco.mj_forward(self._model, self._data)
+
+
+        if self.tcp_orient_randomize:
             ori = self._data.mocap_quat[0].copy()
             # Convert maximum angles from degrees to radians
-            max_angle_rad_x = np.deg2rad(self.max_mocap_orient["x"])
-            max_angle_rad_y = np.deg2rad(self.max_mocap_orient["y"])
-            max_angle_rad_z = np.deg2rad(self.max_mocap_orient["z"])
+            max_angle_rad_x = np.deg2rad(self.max_tcp_orient_randomize["x"])
+            max_angle_rad_y = np.deg2rad(self.max_tcp_orient_randomize["y"])
+            max_angle_rad_z = np.deg2rad(self.max_tcp_orient_randomize["z"])
 
             # Sample random angles independently for each axis
             random_angle_x = np.random.uniform(-max_angle_rad_x, max_angle_rad_x)
@@ -439,8 +442,6 @@ class ur5ePegInHoleFixedGymEnv(MujocoGymEnv):
         clipped_local_pos = np.clip(local_pos, -cartesian_half_extents, cartesian_half_extents)
         new_pos = obb_rotation@clipped_local_pos  + cartesian_pos
         self._data.mocap_pos[0] = new_pos
-        # npos = np.clip(pos + dpos, *self.cartesian_bounds)
-        # self._data.mocap_pos[0] = npos
 
         # Set the orientation
         ori = self._data.mocap_quat[0].copy()
@@ -489,7 +490,7 @@ class ur5ePegInHoleFixedGymEnv(MujocoGymEnv):
     def render(self) -> np.ndarray:
         rendered_frames = []
         for cam_id in self.camera_id:
-            self._viewer.camera = cam_id  # Set the camera based on cam_id
+            self._viewer.camera_id = cam_id  # Set the camera based on cam_id
             rendered_frames.append(
                 self._viewer.render(render_mode="rgb_array")
             )

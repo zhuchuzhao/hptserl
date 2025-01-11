@@ -2,165 +2,244 @@ import numpy as np
 import time
 import gymnasium
 import mujoco
-import mujoco.viewer
-import numpy as np
 import mujoco_sim
 
-# def move_to_position(env, target_pos, target_quat=None, 
-#                      tolerance=0.001, max_steps=500):
-#     """
-#     Moves the end-effector to a specified position (and orientation),
-#     stepping the simulation until close enough or max_steps reached.
-#     """
-#     for i in range(max_steps):
-#         # Update mocap position
-#         env.data.mocap_pos[0] = target_pos
+from scipy.spatial.transform import Rotation, Slerp
 
-#         # Optionally update orientation
-#         if target_quat is not None:
-#             env.data.mocap_quat[0] = target_quat
-
-#         # Step the environment
-#         obs, rew, done, truncated, info = env.step(np.zeros(7))
-
-#         # Check distance
-#         current_pos = env.data.sensor("hande/pinch_pos").data
-#         dist = np.linalg.norm(current_pos - target_pos)
-#         if dist < tolerance:
-
-#             print(f"Reached target: {target_pos} (within tolerance {tolerance})")
-#             break
-
-def move_to_position(env, target_pos, target_quat=None, 
-                     tolerance=0.001, max_steps=500, resolution=1):
+def compute_waypoints(pos_start, quat_start, pos_end, quat_end, N):
     """
-    Moves the end-effector to a specified position (and orientation),
-    by calculating error and generating actions based on it.
-    Stepping the simulation until close enough or max_steps reached.
+    Returns position and orientation waypoints (with linear interpolation of position
+    and slerp for orientation).
     """
-    for i in range(max_steps):
-        # Get the current position and orientation from the environment
-        current_pos = env.unwrapped.data.sensor("hande/pinch_pos").data
-        current_quat = env.unwrapped.data.sensor("hande/pinch_quat").data
+    # Times for interpolation
+    t_vals = np.linspace(0, 1, N)
+    key_times = [0, 1]
 
-        # Compute position error
-        pos_error = target_pos - current_pos
-        print(f"Position error: {np.linalg.norm(pos_error)}")
+    # Orientation via slerp
+    key_rots = Rotation.from_quat([quat_start, quat_end])
+    slerp_fn = Slerp(key_times, key_rots)
+    interp_rots = slerp_fn(t_vals)
+    quat_waypoints = interp_rots.as_quat()
 
-        # Generate a positional action with a resolution limit
-        pos_action = np.clip(pos_error, -resolution, resolution)
-        print(f"Position action: {pos_action}")
+    # Position (linear interpolation)
+    pos_waypoints = np.linspace(pos_start, pos_end, N)
 
-
-        # # Compute orientation error and generate orientation action
-        # if target_quat is not None:
-        #     quat_conj = np.zeros(4)
-        #     quat_err = np.zeros(4)
-        #     mujoco.mju_negQuat(quat_conj, current_quat)
-        #     mujoco.mju_mulQuat(quat_err, target_quat, quat_conj)
-
-        #     # Convert quaternion error to Euler angle error
-        #     ori_error = np.zeros(3)
-        #     mujoco.mju_quat2Vel(ori_error, quat_err, 1.0)
-
-        #     # Generate orientation action with a resolution limit
-        #     ori_action = np.clip(ori_error, -resolution, resolution)
-        # else:
-        ori_action = np.zeros(3)
-
-        # Combine position and orientation actions, add a zero gripper action
-        action = np.concatenate((pos_action, ori_action, [0.0]))
-        print(f"Action: {action}")
-
-        # Step the environment with the generated action
-        obs, rew, done, truncated, info = env.step(action)
-
-        # Check if the positional error is within tolerance
-        if np.linalg.norm(pos_error) < tolerance:
-            print(f"Reached target: {target_pos} (within tolerance {tolerance})")
-            break
-
-        # # Optional: Check orientation tolerance
-        # if target_quat is not None and np.linalg.norm(ori_error) < tolerance:
-        #     print(f"Reached target orientation: {target_quat} (within tolerance {tolerance})")
-        #     break
-
-    else:
-        print(f"Failed to reach target position within {max_steps} steps.")
+    return pos_waypoints, quat_waypoints
 
 
-def pick_and_place_connector(env):
+def has_reached_pose(
+    current_pos, current_quat, target_pos, target_quat,
+    pos_threshold=0.001, angle_threshold_deg=1.0
+):
     """
-    High-level routine to pick the connector and place it in the port.
+    Check if the current pose is within a certain position/orientation threshold
+    from the target pose.
+
+    :param current_pos: np.array(3,) - current TCP position
+    :param current_quat: np.array(4,) - current TCP quaternion (x, y, z, w)
+    :param target_pos: np.array(3,) - target TCP position
+    :param target_quat: np.array(4,) - target TCP quaternion (x, y, z, w)
+    :param pos_threshold: float, linear distance threshold (meters)
+    :param angle_threshold_deg: float, angular threshold (degrees)
+    :return: True if within thresholds, False otherwise
     """
-    # 1. Reset environment
-    
+    # Check position error
+    pos_error = np.linalg.norm(current_pos - target_pos)
+    if pos_error > pos_threshold:
+        return False
 
-    # 6. Move above the port
-    port_bottom_pos = env.unwrapped.data.sensor("port_bottom_pos").data.copy()
-    port_bottom_quat = env.unwrapped.data.sensor("port_bottom_quat").data
-    pos_above_port = port_bottom_pos.copy()
-    pos_above_port[2] += 2
-    move_to_position(env, pos_above_port, tolerance=0.001)
+    # Check orientation error by quaternion distance
+    rot_current = Rotation.from_quat(current_quat)
+    rot_target = Rotation.from_quat(target_quat)
+    # Relative rotation
+    rot_diff = rot_target * rot_current.inv()
+    angle_deg = np.degrees(rot_diff.magnitude())
+    if angle_deg > angle_threshold_deg:
+        return False
 
-    # # 8. Move down to insert connector
-    # pos_in_port = env.unwrapped.data.site_xpos[env.unwrapped._port_site_id][:3]
-    # move_to_position(env, pos_in_port, port_bottom_quat, tolerance=0.001)
-
-    print("Pick-and-place routine complete!")
+    return True
 
 
 if __name__ == "__main__":
-    env = gymnasium.make("ur5ePegInHoleFixedGymEnv_vision-v0", render_mode="human")
-    # Unwrapping the environment
+
+    # --- Number of waypoints per stage ---
+    N_stage1 = 10
+    N_stage2 = 10
+
+    # --- Create and reset the environment ---
+    env = gymnasium.make("ur5ePegInHoleFixedGymEnv_state-v0", render_mode="human")
     unwrapped_env = env.unwrapped
     m = unwrapped_env.model
     d = unwrapped_env.data
-
     env.reset()
 
-    # 6. Move above the port
-    port_bottom_pos = d.sensor("port_bottom_pos").data.copy()
-    port_bottom_pos[2] += 0.1
-
-    max_steps = 500
-    tolerance = 0.001
-    resolution = 0.001125
-    for i in range(50):
+    # Initial steps with zero action
+    for _ in range(100):
         obs, rew, done, truncated, info = env.step(np.zeros(7))
-    while True:
 
-        # Get the current position and orientation from the environment
-        current_pos = d.sensor("connector_bottom_pos").data.copy()
-        pos_error = port_bottom_pos - current_pos
-        print("Position error:", pos_error)
-        print(f"Position error: {np.linalg.norm(pos_error)}")
-        pos_action = np.clip(pos_error, -resolution, resolution)
-        action = np.concatenate((pos_action, np.zeros(3), [0.0]))
-        print(f"Action: {action}")
+    # --- Retrieve the initial pose ---
+    initial_pos = d.sensor("connector_bottom_pos").data.copy()
+    initial_quat = d.sensor("connector_head_quat").data.copy()
+
+    # --- Retrieve the target pose ---
+    port_bottom_pos = d.sensor("port_bottom_pos").data.copy()
+    port_bottom_quat = d.sensor("port_bottom_quat").data.copy()
+
+    # --------------------------------------------------
+    # 1) Define an intermediate pose "above" the port
+    # --------------------------------------------------
+    #   Randomly pick an offset in [0.02, 0.05]
+    random_offset_z = np.random.uniform(0.02, 0.05)
+    above_port_pos = port_bottom_pos.copy()
+    above_port_pos[2] += random_offset_z
+
+    # --------------------------------------------------
+    # 2) STAGE 1: from initial pose to above_port_pos
+    # --------------------------------------------------
+    stage1_pos_waypoints, stage1_quat_waypoints = compute_waypoints(
+        pos_start=initial_pos,
+        quat_start=initial_quat,
+        pos_end=above_port_pos,
+        quat_end=port_bottom_quat,   # align orientation to port's orientation
+        N=N_stage1
+    )
+
+    # --------------------------------------------------
+    # 3) STAGE 2: from above_port_pos down to port_bottom_pos
+    # --------------------------------------------------
+    #   Orientation is the same at the end of Stage 1
+    stage2_pos_waypoints, stage2_quat_waypoints = compute_waypoints(
+        pos_start=above_port_pos,
+        quat_start=port_bottom_quat,   # end orientation of Stage 1
+        pos_end=port_bottom_pos,
+        quat_end=port_bottom_quat,     # final orientation
+        N=N_stage2
+    )
+
+    # --- Execute Stage 1 first ---
+    prev_pos = initial_pos
+    prev_quat = initial_quat
+    gripper_cmd = 0.0
+
+    print("===== STAGE 1: Moving above port =====")
+    for i in range(N_stage1):
+        current_time = time.time()
+
+        desired_pos = stage1_pos_waypoints[i]
+        desired_quat = stage1_quat_waypoints[i]
+
+        # Delta position
+        delta_pos = desired_pos - prev_pos
+
+        # Delta orientation (increment from prev_quat to desired_quat)
+        quat_conj = np.array([prev_quat[0], -prev_quat[1], -prev_quat[2], -prev_quat[3]])
+        orientation_error_quat = np.zeros(4)
+        mujoco.mju_mulQuat(orientation_error_quat, desired_quat, quat_conj)
+        ori_err = np.zeros(3)
+        mujoco.mju_quat2Vel(ori_err, orientation_error_quat, 1.0)
+
+        action = np.concatenate([delta_pos, ori_err, [gripper_cmd]])
+        print(f"[STAGE 1] Waypoint {i+1}/{N_stage1}, Action = {action}")
+
         obs, rew, done, truncated, info = env.step(action)
-        if np.linalg.norm(pos_error) < tolerance:
-            print(f"Reached target: {port_bottom_pos} (within tolerance {tolerance})")
+
+        # Update for next iteration
+        prev_pos = desired_pos
+        prev_quat = desired_quat
+
+        # Sleep until next control step
+        time_until_next_step = unwrapped_env.control_dt - (time.time() - current_time)
+        if time_until_next_step > 0:
+            time.sleep(time_until_next_step)
+
+        if done or truncated:
+            print("Environment ended prematurely during Stage 1.")
+            obs, info = env.reset()
             break
 
+    # ------------------------------------------------------------------
+    # Wait until the TCP has truly reached the Stage 1 final pose
+    # (within some threshold), or until we exceed a timeout
+    # ------------------------------------------------------------------
+    stage1_target_pos = above_port_pos
+    stage1_target_quat = port_bottom_quat
+
+    print("Waiting until Stage 1 final pose is reached...")
+    start_wait_time = time.time()
+    WAIT_TIMEOUT = 5.0  # seconds
+    reached_stage_1 = False
+
     while True:
-        # Get the current position and orientation from the environment
         current_pos = d.sensor("connector_bottom_pos").data.copy()
-        pos_error = port_bottom_pos - current_pos
-        print("Position error:", pos_error)
-        print(f"Position error: {np.linalg.norm(pos_error)}")
-        pos_action = np.clip(pos_error, -resolution, resolution)
-        action = np.concatenate((pos_action, np.zeros(3), [0.0]))
-        print(f"Action: {action}")
-        obs, rew, done, truncated, info = env.step(action)
-        if np.linalg.norm(pos_error) < tolerance:
-            print(f"Reached target: {port_bottom_pos} (within tolerance {tolerance})")
+        current_quat = d.sensor("connector_head_quat").data.copy()
+        
+        if has_reached_pose(current_pos, current_quat, stage1_target_pos, stage1_target_quat):
+            reached_stage_1 = True
             break
 
-    print("Environment will continue running. Press CTRL+C to exit.")
+        # Step the environment in place with zero action while waiting
+        obs, rew, done, truncated, info = env.step(np.zeros(7))
+        if done or truncated:
+            print("Environment ended prematurely during the waiting period.")
+            env.reset()
+            break
+
+        if (time.time() - start_wait_time) > WAIT_TIMEOUT:
+            print("Timeout reached while waiting for Stage 1 pose.")
+            break
+
+    if reached_stage_1:
+        print("Stage 1 complete: TCP is above the port. Proceeding to Stage 2.")
+    else:
+        print("Warning: Stage 1 final pose NOT reached within threshold/time. Proceeding anyway...")
+
+    # --- Execute Stage 2 only after Stage 1 is confirmed (or forced) ---
+    print("===== STAGE 2: Descending into port =====")
+
+    # Update our "previous pose" in case there's been motion during the wait
+    prev_pos = d.sensor("connector_bottom_pos").data.copy()
+    prev_quat = d.sensor("connector_head_quat").data.copy()
+
+    for i in range(N_stage2):
+        current_time = time.time()
+
+        desired_pos = stage2_pos_waypoints[i]
+        desired_quat = stage2_quat_waypoints[i]
+
+        # Delta position
+        delta_pos = desired_pos - prev_pos
+
+        # Delta orientation
+        quat_conj = np.array([prev_quat[0], -prev_quat[1], -prev_quat[2], -prev_quat[3]])
+        orientation_error_quat = np.zeros(4)
+        mujoco.mju_mulQuat(orientation_error_quat, desired_quat, quat_conj)
+        ori_err = np.zeros(3)
+        mujoco.mju_quat2Vel(ori_err, orientation_error_quat, 1.0)
+
+        action = np.concatenate([delta_pos, ori_err, [gripper_cmd]])
+        print(f"[STAGE 2] Waypoint {i+1}/{N_stage2}, Action = {action}")
+
+        obs, rew, done, truncated, info = env.step(action)
+
+        prev_pos = desired_pos
+        prev_quat = desired_quat
+
+        # Sleep for the next control step
+        time_until_next_step = unwrapped_env.control_dt - (time.time() - current_time)
+        if time_until_next_step > 0:
+            time.sleep(time_until_next_step)
+
+        if done or truncated:
+            print("Environment ended prematurely during Stage 2.")
+            obs, info = env.reset()
+            break
+
+    print("Reached final pose. Robot will remain at the last pose. Press CTRL+C to exit.")
+
+    # Keep the environment alive with zero actions
     while True:
-        # For instance, just send zero actions indefinitely
         obs, rew, done, truncated, info = env.step(np.zeros(7))
         if done or truncated:
             obs, info = env.reset()
+
     env.close()

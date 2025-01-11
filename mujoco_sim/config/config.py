@@ -42,8 +42,8 @@ class PegEnvConfig():
                 "z": 0,  # Maximum deviation in degrees around z-axis
             },   
             "tcp_xyz_randomize": False,  # Randomize tcp xyz placement
-            "mocap_orient": True,  # Orient the tcp to the port
-            "max_mocap_orient_randomize": {
+            "tcp_orient_randomize": True,  # Orient the tcp to the port
+            "max_tcp_orient_randomize": {
                 "x": 0,  # Maximum deviation in degrees around x-axis
                 "y": 0,  # Maximum deviation in degrees around y-axis
                 "z": 0,  # Maximum deviation in degrees around z-axis

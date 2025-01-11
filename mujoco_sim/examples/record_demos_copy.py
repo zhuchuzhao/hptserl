@@ -13,11 +13,11 @@ import imageio
 
 FLAGS = flags.FLAGS
 flags.DEFINE_string("exp_name", None, "Name of experiment corresponding to folder.")
-flags.DEFINE_integer("successes_needed", 2, "Number of successful demos to collect.")
+flags.DEFINE_integer("successes_needed", 1, "Number of successful demos to collect.")
 
 def main(_):
 
-    env = gymnasium.make("ur5ePegInHoleFixedGymEnv_vision-v0", render_mode="human")
+    env = gymnasium.make("ur5ePegInHoleFixedGymEnv_state-v0", render_mode="human")
     action_spec = env.action_space
     print(f"Action space: {action_spec}")
 
@@ -36,7 +36,14 @@ def main(_):
     returns = 0
     
     while success_count < success_needed:
-        frames.append(np.concatenate((obs["front"], obs["wrist"]), axis=0))  # Combine views
+        # frames.append(np.concatenate((obs["front"], obs["wrist"]), axis=0))  # Combine views
+        if "front" in obs or "wrist" in obs:  # Check if image observations are available
+            frames.append(np.concatenate((obs["front"], obs["wrist"]), axis=0))  # Combine views
+        else:
+            frame1, frame2 = env.render()
+            print(frame1.shape, frame2.shape)
+            frames.append(np.concatenate((frame1, frame2), axis=0))
+
         actions = np.zeros(env.action_space.sample().shape) 
         next_obs, rew, done, truncated, info = env.step(actions)
         returns += rew

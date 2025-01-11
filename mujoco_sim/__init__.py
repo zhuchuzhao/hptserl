@@ -45,8 +45,8 @@ register(
                 "z": 0,  # Maximum deviation in degrees around z-axis
             },   
             "tcp_xyz_randomize": False,  # Randomize tcp xyz placement
-            "mocap_orient": True,
-            "max_mocap_orient_randomize": {
+            "tcp_orient_randomize": True,
+            "max_tcp_orient_randomize": {
                 "x": 0,  # Maximum deviation in degrees around x-axis
                 "y": 0,  # Maximum deviation in degrees around y-axis
                 "z": 0,  # Maximum deviation in degrees around z-axis
@@ -97,8 +97,8 @@ register(
                 "z": 0,  # Maximum deviation in degrees around z-axis
             },   
             "tcp_xyz_randomize": False,  # Randomize tcp xyz placement
-            "mocap_orient": True,
-            "max_mocap_orient_randomize": {
+            "tcp_orient_randomize": True,
+            "max_tcp_orient_randomize": {
                 "x": 0,  # Maximum deviation in degrees around x-axis
                 "y": 0,  # Maximum deviation in degrees around y-axis
                 "z": 0,  # Maximum deviation in degrees around z-axis
@@ -124,11 +124,11 @@ register(
             entry_point='mujoco_sim.envs.wrappers:GripperCloseEnv',  # Replace with actual module path
             kwargs={},  # Add any necessary kwargs for this wrapper
         ),
-        # WrapperSpec(
-        #     name='SpacemouseIntervention',
-        #     entry_point='mujoco_sim.envs.wrappers:SpacemouseIntervention',
-        #     kwargs={},  # Add any necessary kwargs for this wrapper
-        # ),
+        WrapperSpec(
+            name='SpacemouseIntervention',
+            entry_point='mujoco_sim.envs.wrappers:SpacemouseIntervention',
+            kwargs={},  # Add any necessary kwargs for this wrapper
+        ),
         WrapperSpec(
             name='ObsWrapper',
             entry_point='mujoco_sim.envs.wrappers:ObsWrapper',  # Replace with actual module path
@@ -161,11 +161,11 @@ register(
                 "z": 0,  # Maximum deviation in degrees around z-axis
             },   
             "tcp_xyz_randomize": True,  # Randomize tcp xyz placement
-            "mocap_orient": False,
-            "max_mocap_orient_randomize": {
+            "tcp_orient_randomize": True,
+            "max_tcp_orient_randomize": {
                 "x": 0,  # Maximum deviation in degrees around x-axis
                 "y": 0,  # Maximum deviation in degrees around y-axis
-                "z": 0,  # Maximum deviation in degrees around z-axis
+                "z": 45,  # Maximum deviation in degrees around z-axis
             },                
             },
             "ENV_CONFIG": {
@@ -221,8 +221,8 @@ register(
                 "z": 0,  # Maximum deviation in degrees around z-axis
             },   
             "tcp_xyz_randomize": False,  # Randomize tcp xyz placement
-            "mocap_orient": True,
-            "max_mocap_orient_randomize": {
+            "tcp_orient_randomize": True,
+            "max_tcp_orient_randomize": {
                 "x": 0,  # Maximum deviation in degrees around x-axis
                 "y": 0,  # Maximum deviation in degrees around y-axis
                 "z": 0,  # Maximum deviation in degrees around z-axis
