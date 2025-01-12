@@ -6,28 +6,44 @@ import pickle as pkl
 import datetime
 from absl import app, flags
 import time
+import gymnasium
+import mujoco_sim
+import imageio
 
-from experiments.mappings import CONFIG_MAPPING
 
 FLAGS = flags.FLAGS
 flags.DEFINE_string("exp_name", None, "Name of experiment corresponding to folder.")
-flags.DEFINE_integer("successes_needed", 20, "Number of successful demos to collect.")
+flags.DEFINE_integer("successes_needed", 1, "Number of successful demos to collect.")
 
 def main(_):
-    assert FLAGS.exp_name in CONFIG_MAPPING, 'Experiment folder not found.'
-    config = CONFIG_MAPPING[FLAGS.exp_name]()
-    env = config.get_environment(fake_env=False, save_video=False, classifier=True)
+
+    env = gymnasium.make("ur5ePegInHoleFixedGymEnv_state-v0", render_mode="human")
+    action_spec = env.action_space
+    print(f"Action space: {action_spec}")
+
+    observation_spec = env.observation_space
+    print(f"Observation space: {observation_spec}")
     
     obs, info = env.reset()
+    print("obs", obs)
     print("Reset done")
     transitions = []
     success_count = 0
     success_needed = FLAGS.successes_needed
     pbar = tqdm(total=success_needed)
     trajectory = []
+    frames = []  # For storing video frames
     returns = 0
     
     while success_count < success_needed:
+        # frames.append(np.concatenate((obs["front"], obs["wrist"]), axis=0))  # Combine views
+        if "front" in obs or "wrist" in obs:  # Check if image observations are available
+            frames.append(np.concatenate((obs["front"], obs["wrist"]), axis=0))  # Combine views
+        else:
+            frame1, frame2 = env.render()
+            print(frame1.shape, frame2.shape)
+            frames.append(np.concatenate((frame1, frame2), axis=0))
+
         actions = np.zeros(env.action_space.sample().shape) 
         next_obs, rew, done, truncated, info = env.step(actions)
         returns += rew
@@ -55,7 +71,13 @@ def main(_):
                     transitions.append(copy.deepcopy(transition))
                 success_count += 1
                 pbar.update(1)
+
+                # Save the video for the successful demo
+                video_name = f"./demo_data/success_demo_{success_count}.mp4"
+                imageio.mimsave(video_name, frames, fps=20)
+                print(f"Saved video to {video_name}")
             trajectory = []
+            frames = []  # Clear frames for the next episode
             returns = 0
             obs, info = env.reset()
             

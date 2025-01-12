@@ -10,7 +10,7 @@ class PegEnvConfig():
             "action_scale": np.array([1,1, 1]),  # Scaling factors for position, orientation, and gripper control
             "control_dt": 0.02,  # Time step for controller updates
             "physics_dt": 0.002,  # Time step for physics simulation
-            "time_limit": 30.0,  # Time limit for each episode
+            "time_limit": 50.0,  # Time limit for each episode
             "seed": 0,  # Random seed
             "image_obs": False,  # Use image observations
         }

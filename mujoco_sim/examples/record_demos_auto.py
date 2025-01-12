@@ -14,6 +14,7 @@ import imageio
 FLAGS = flags.FLAGS
 flags.DEFINE_string("exp_name", None, "Name of experiment corresponding to folder.")
 flags.DEFINE_integer("successes_needed", 1, "Number of successful demos to collect.")
+flags.DEFINE_boolean("save_video", False, "Flag to save videos of successful demos.")
 
 def main(_):
 
@@ -36,13 +37,13 @@ def main(_):
     returns = 0
     
     while success_count < success_needed:
-        # frames.append(np.concatenate((obs["front"], obs["wrist"]), axis=0))  # Combine views
-        if "front" in obs or "wrist" in obs:  # Check if image observations are available
-            frames.append(np.concatenate((obs["front"], obs["wrist"]), axis=0))  # Combine views
-        else:
-            frame1, frame2 = env.render()
-            print(frame1.shape, frame2.shape)
-            frames.append(np.concatenate((frame1, frame2), axis=0))
+        if FLAGS.save_video:  # Only collect frames if save_video flag is active
+                    if "front" in obs or "wrist" in obs:  # Check if image observations are available
+                        frames.append(np.concatenate((obs["front"], obs["wrist"]), axis=0))  # Combine views
+                    else:
+                        frame1, frame2 = env.render()
+                        print(frame1.shape, frame2.shape)
+                        frames.append(np.concatenate((frame1, frame2), axis=0))
 
         actions = np.zeros(env.action_space.sample().shape) 
         next_obs, rew, done, truncated, info = env.step(actions)
@@ -71,11 +72,12 @@ def main(_):
                     transitions.append(copy.deepcopy(transition))
                 success_count += 1
                 pbar.update(1)
-
-                # Save the video for the successful demo
-                video_name = f"./demo_data/success_demo_{success_count}.mp4"
-                imageio.mimsave(video_name, frames, fps=20)
-                print(f"Saved video to {video_name}")
+                # Save the video for the successful demo if save_video flag is active
+                if FLAGS.save_video:
+                    # Save the video for the successful demo
+                    video_name = f"./demo_data/success_demo_{success_count}.mp4"
+                    imageio.mimsave(video_name, frames, fps=20)
+                    print(f"Saved video to {video_name}")
             trajectory = []
             frames = []  # Clear frames for the next episode
             returns = 0

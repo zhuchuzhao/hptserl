@@ -88,7 +88,6 @@ if __name__ == "__main__":
     # --------------------------------------------------
     # 1) Define an intermediate pose "above" the port
     # --------------------------------------------------
-    #   Randomly pick an offset in [0.02, 0.05]
     random_offset_z = np.random.uniform(0.02, 0.05)
     above_port_pos = port_bottom_pos.copy()
     above_port_pos[2] += random_offset_z
@@ -100,23 +99,11 @@ if __name__ == "__main__":
         pos_start=initial_pos,
         quat_start=initial_quat,
         pos_end=above_port_pos,
-        quat_end=port_bottom_quat,   # align orientation to port's orientation
+        quat_end=port_bottom_quat,
         N=N_stage1
     )
 
-    # --------------------------------------------------
-    # 3) STAGE 2: from above_port_pos down to port_bottom_pos
-    # --------------------------------------------------
-    #   Orientation is the same at the end of Stage 1
-    stage2_pos_waypoints, stage2_quat_waypoints = compute_waypoints(
-        pos_start=above_port_pos,
-        quat_start=port_bottom_quat,   # end orientation of Stage 1
-        pos_end=port_bottom_pos,
-        quat_end=port_bottom_quat,     # final orientation
-        N=N_stage2
-    )
-
-    # --- Execute Stage 1 first ---
+    # --- Execute Stage 1 ---
     prev_pos = initial_pos
     prev_quat = initial_quat
     gripper_cmd = 0.0
@@ -131,7 +118,7 @@ if __name__ == "__main__":
         # Delta position
         delta_pos = desired_pos - prev_pos
 
-        # Delta orientation (increment from prev_quat to desired_quat)
+        # Delta orientation
         quat_conj = np.array([prev_quat[0], -prev_quat[1], -prev_quat[2], -prev_quat[3]])
         orientation_error_quat = np.zeros(4)
         mujoco.mju_mulQuat(orientation_error_quat, desired_quat, quat_conj)
@@ -159,7 +146,7 @@ if __name__ == "__main__":
 
     # ------------------------------------------------------------------
     # Wait until the TCP has truly reached the Stage 1 final pose
-    # (within some threshold), or until we exceed a timeout
+    # (within some threshold), or until we exceed a timeout.
     # ------------------------------------------------------------------
     stage1_target_pos = above_port_pos
     stage1_target_quat = port_bottom_quat
@@ -172,7 +159,7 @@ if __name__ == "__main__":
     while True:
         current_pos = d.sensor("connector_bottom_pos").data.copy()
         current_quat = d.sensor("connector_head_quat").data.copy()
-        
+
         if has_reached_pose(current_pos, current_quat, stage1_target_pos, stage1_target_quat):
             reached_stage_1 = True
             break
@@ -185,16 +172,49 @@ if __name__ == "__main__":
             break
 
         if (time.time() - start_wait_time) > WAIT_TIMEOUT:
+            # Compute position and orientation error for logging
+            pos_error = np.linalg.norm(current_pos - stage1_target_pos)
+
+            rot_current = Rotation.from_quat(current_quat)
+            rot_target = Rotation.from_quat(stage1_target_quat)
+            rot_diff = rot_target * rot_current.inv()
+            angle_deg = np.degrees(rot_diff.magnitude())
+
             print("Timeout reached while waiting for Stage 1 pose.")
+            print(f"Position error: {pos_error:.4f} m")
+            print(f"Orientation error: {angle_deg:.2f} deg")
             break
 
     if reached_stage_1:
         print("Stage 1 complete: TCP is above the port. Proceeding to Stage 2.")
+        for _ in range(50):
+            obs, rew, done, truncated, info = env.step(np.zeros(7))
     else:
         print("Warning: Stage 1 final pose NOT reached within threshold/time. Proceeding anyway...")
+        for _ in range(50):
+            obs, rew, done, truncated, info = env.step(np.zeros(7))
 
     # --- Execute Stage 2 only after Stage 1 is confirmed (or forced) ---
     print("===== STAGE 2: Descending into port =====")
+
+        # --------------------------------------------------
+    # 3) STAGE 2: from above_port_pos down to port_bottom_pos
+    # --------------------------------------------------
+        # --- Retrieve the initial pose ---
+    initial_pos = d.sensor("connector_bottom_pos").data.copy()
+    initial_quat = d.sensor("connector_bottom_quat").data.copy()
+
+    # --- Retrieve the target pose ---
+    port_bottom_pos = d.sensor("port_bottom_pos").data.copy()
+    port_bottom_quat = d.sensor("port_bottom_quat").data.copy()
+
+    stage2_pos_waypoints, stage2_quat_waypoints = compute_waypoints(
+        pos_start=initial_pos,
+        quat_start=port_bottom_quat,  # orientation from stage1 end
+        pos_end=port_bottom_pos,
+        quat_end=port_bottom_quat,    # final orientation
+        N=N_stage2
+    )
 
     # Update our "previous pose" in case there's been motion during the wait
     prev_pos = d.sensor("connector_bottom_pos").data.copy()
