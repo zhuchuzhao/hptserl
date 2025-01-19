@@ -1,0 +1,12 @@
+Fri Jan 17 13:50:49 2025
+ERROR: mjv_updateCamera: fixed camera id is outside valid range
+
+Fri Jan 17 13:52:51 2025
+ERROR: mjv_updateCamera: fixed camera id is outside valid range
+
+Fri Jan 17 13:53:45 2025
+ERROR: mjv_updateCamera: fixed camera id is outside valid range
+
+Sat Jan 18 15:51:26 2025
+WARNING: Nan, Inf or huge value in QACC at DOF 0. The simulation is unstable. Time = 10.0040.
+

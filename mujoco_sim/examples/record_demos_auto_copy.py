@@ -16,14 +16,18 @@ from absl import app, flags
 FLAGS = flags.FLAGS
 flags.DEFINE_string("exp_name", None, "Name of experiment corresponding to folder.")
 flags.DEFINE_integer("successes_needed", 1, "Number of successful demos to collect.")
-flags.DEFINE_boolean("save_video", True, "Flag to save videos of successful demos.")
+flags.DEFINE_boolean("save_video", False, "Flag to save videos of successful demos.")
+flags.DEFINE_boolean("save_model", False, "Flag to save videos of successful demos.")
 
 
-def compute_waypoints(pos_start, quat_start, pos_end, quat_end, N):
+
+def compute_waypoints(pos_start, quat_start, pos_end, quat_end, resolution=0.01):
     """
     Returns position and orientation waypoints (with linear interpolation of position
     and slerp for orientation).
     """
+    total_distance = np.linalg.norm(pos_end - pos_start)
+    N = max(int(total_distance / resolution), 2)  # Ensure at least 2 waypoints
     t_vals = np.linspace(0, 1, N)
     key_times = [0, 1]
 
@@ -36,25 +40,7 @@ def compute_waypoints(pos_start, quat_start, pos_end, quat_end, N):
     return pos_waypoints, quat_waypoints
 
 
-def has_reached_pose(
-    current_pos, current_quat, target_pos, target_quat,
-    pos_threshold=0.001, angle_threshold_deg=1.0
-):
-    """
-    Check if the current pose is within a certain threshold (position + orientation).
-    """
-    pos_error = np.linalg.norm(current_pos - target_pos)
-    if pos_error > pos_threshold:
-        return False
-
-    rot_current = Rotation.from_quat(current_quat)
-    rot_target = Rotation.from_quat(target_quat)
-    rot_diff = rot_target * rot_current.inv()
-    angle_deg = np.degrees(rot_diff.magnitude())
-    return angle_deg <= angle_threshold_deg
-
-
-def run_two_stage_demo(env, unwrapped_env, frames=None):
+def run_two_stage_demo(env, unwrapped_env, _obs=None, trajectory=None, frames=None):
     """
     Example two-stage motion approach:
      1) Move from initial pose to an 'above port' pose
@@ -66,14 +52,7 @@ def run_two_stage_demo(env, unwrapped_env, frames=None):
     """
 
     d = unwrapped_env.data
-
-    # Observations and transitions
-    obs_list = []
-    act_list = []
-    next_obs_list = []
-    rew_list = []
-    done_list = []
-    info_list = []
+    obs = _obs
 
     # --------------------------------------------------
     #  Retrieve the initial pose
@@ -97,13 +76,12 @@ def run_two_stage_demo(env, unwrapped_env, frames=None):
     # --------------------------------------------------
     # 2) Compute Stage 1 waypoints
     # --------------------------------------------------
-    N_stage1 = 10
     stage1_pos_waypoints, stage1_quat_waypoints = compute_waypoints(
         pos_start=initial_pos,
         quat_start=initial_quat,
         pos_end=above_port_pos,
         quat_end=port_bottom_quat,
-        N=N_stage1
+        resolution=0.001
     )
 
     # Execute Stage 1
@@ -111,7 +89,7 @@ def run_two_stage_demo(env, unwrapped_env, frames=None):
     prev_quat = initial_quat
     gripper_cmd = 0.0
 
-    for i in range(N_stage1):
+    for i in range(len(stage1_pos_waypoints)):
         desired_pos = stage1_pos_waypoints[i]
         desired_quat = stage1_quat_waypoints[i]
 
@@ -129,36 +107,24 @@ def run_two_stage_demo(env, unwrapped_env, frames=None):
 
         # Step environment
         next_obs, rew, done, truncated, info = env.step(action)
-        obs = next_obs  # or keep track of the last obs
-
-        if frames is not None:
-            # If your obs contains images directly:
-            if "front" in next_obs and "wrist" in next_obs:
-                frames.append(
-                    np.concatenate((next_obs["front"], next_obs["wrist"]), axis=0)
-                )
-            else:
-                # Otherwise, render from the environment
-                frame1, frame2 = env.render()
-                frames.append(np.concatenate((frame1, frame2), axis=0))
+        frames.append(unwrapped_env.frames)
 
         # Store transition
-        transition = dict(
-            observations=copy.deepcopy(obs),
-            actions=copy.deepcopy(action),
-            next_observations=copy.deepcopy(next_obs),
-            rewards=rew,
-            dones=done,
-            infos=info
+        transition = copy.deepcopy(
+            dict(
+                observations=obs,
+                actions=action,
+                next_observations=next_obs,
+                rewards=rew,
+                masks=1.0 - done,
+                dones=done,
+                infos=info,
+            )
         )
-        obs_list.append(transition["observations"])
-        act_list.append(transition["actions"])
-        next_obs_list.append(transition["next_observations"])
-        rew_list.append(transition["rewards"])
-        done_list.append(transition["dones"])
-        info_list.append(transition["infos"])
+        trajectory.append(transition)
 
         # Update for next iteration
+        obs = next_obs  # or keep track of the last obs
         prev_pos = desired_pos
         prev_quat = desired_quat
 
@@ -167,91 +133,37 @@ def run_two_stage_demo(env, unwrapped_env, frames=None):
 
         if done or truncated:
             # Episode ended prematurely
-            return (obs_list, act_list, next_obs_list, rew_list, done_list, info_list), info.get("succeed", False)
+            return trajectory, info.get("succeed", False)
 
     # Wait until final pose is reached or until we exceed a timeout
     start_wait_time = time.time()
-    WAIT_TIMEOUT = 5.0
+    WAIT_TIMEOUT = 10.0
 
-    stage1_target_pos = above_port_pos
-    stage1_target_quat = port_bottom_quat
-
-    while True:
-        current_pos = d.sensor("connector_bottom_pos").data.copy()
-        current_quat = d.sensor("connector_head_quat").data.copy()
-
-        if has_reached_pose(current_pos, current_quat, stage1_target_pos, stage1_target_quat):
-            break
+    while np.linalg.norm(unwrapped_env.controller.error) > 1e-10:
 
         # Step in place with zero action while waiting
-        obs = next_obs
         next_obs, rew, done, truncated, info = env.step(np.zeros(7))
+        frames.append(unwrapped_env.frames)
 
-        if frames is not None:
-            # If your obs contains images directly:
-            if "front" in next_obs and "wrist" in next_obs:
-                frames.append(
-                    np.concatenate((next_obs["front"], next_obs["wrist"]), axis=0)
-                )
-            else:
-                # Otherwise, render from the environment
-                frame1, frame2 = env.render()
-                frames.append(np.concatenate((frame1, frame2), axis=0))
-
-        transition = dict(
-            observations=copy.deepcopy(obs),
-            actions=np.zeros(7),
-            next_observations=copy.deepcopy(next_obs),
-            rewards=rew,
-            dones=done,
-            infos=info
+        transition = copy.deepcopy(
+            dict(
+                observations=obs,
+                actions=np.zeros(7),
+                next_observations=next_obs,
+                rewards=rew,
+                masks=1.0 - done,
+                dones=done,
+                infos=info
+            )
         )
-        obs_list.append(transition["observations"])
-        act_list.append(transition["actions"])
-        next_obs_list.append(transition["next_observations"])
-        rew_list.append(transition["rewards"])
-        done_list.append(transition["dones"])
-        info_list.append(transition["infos"])
+        trajectory.append(transition)
+        obs = next_obs
 
         if done or truncated:
-            return (obs_list, act_list, next_obs_list, rew_list, done_list, info_list), info.get("succeed", False)
-
+            return trajectory, info.get("succeed", False)
         if (time.time() - start_wait_time) > WAIT_TIMEOUT:
             # Timed out waiting for Stage 1 final pose
             break
-
-    # Extra few steps
-    for _ in range(20):
-        obs = next_obs
-        next_obs, rew, done, truncated, info = env.step(np.zeros(7))
-        transition = dict(
-            observations=copy.deepcopy(obs),
-            actions=np.zeros(7),
-            next_observations=copy.deepcopy(next_obs),
-            rewards=rew,
-            dones=done,
-            infos=info
-        )
-        if frames is not None:
-            # If your obs contains images directly:
-            if "front" in next_obs and "wrist" in next_obs:
-                frames.append(
-                    np.concatenate((next_obs["front"], next_obs["wrist"]), axis=0)
-                )
-            else:
-                # Otherwise, render from the environment
-                frame1, frame2 = env.render()
-                frames.append(np.concatenate((frame1, frame2), axis=0))
-
-        obs_list.append(transition["observations"])
-        act_list.append(transition["actions"])
-        next_obs_list.append(transition["next_observations"])
-        rew_list.append(transition["rewards"])
-        done_list.append(transition["dones"])
-        info_list.append(transition["infos"])
-
-        if done or truncated:
-            return (obs_list, act_list, next_obs_list, rew_list, done_list, info_list), info.get("succeed", False)
 
     # --------------------------------------------------
     # 3) Stage 2: descend from above_port_pos to port_bottom_pos
@@ -263,19 +175,18 @@ def run_two_stage_demo(env, unwrapped_env, frames=None):
     port_bottom_pos = d.sensor("port_bottom_pos").data.copy()
     port_bottom_quat = d.sensor("port_bottom_quat").data.copy()
 
-    N_stage2 = 10
     stage2_pos_waypoints, stage2_quat_waypoints = compute_waypoints(
         pos_start=initial_pos,
         quat_start=initial_quat,
         pos_end=port_bottom_pos,
         quat_end=port_bottom_quat,
-        N=N_stage2
+        resolution=0.001
     )
 
     prev_pos = initial_pos
     prev_quat = initial_quat
 
-    for i in range(N_stage2):
+    for i in range(len(stage2_pos_waypoints)):
         desired_pos = stage2_pos_waypoints[i]
         desired_quat = stage2_quat_waypoints[i]
 
@@ -291,157 +202,116 @@ def run_two_stage_demo(env, unwrapped_env, frames=None):
 
         action = np.concatenate([delta_pos, ori_err, [gripper_cmd]])
 
-        obs = next_obs
         next_obs, rew, done, truncated, info = env.step(action)
+        frames.append(unwrapped_env.frames)
 
-        if frames is not None:
-            # If your obs contains images directly:
-            if "front" in next_obs and "wrist" in next_obs:
-                frames.append(
-                    np.concatenate((next_obs["front"], next_obs["wrist"]), axis=0)
-                )
-            else:
-                # Otherwise, render from the environment
-                frame1, frame2 = env.render()
-                frames.append(np.concatenate((frame1, frame2), axis=0))
-
-        transition = dict(
-            observations=copy.deepcopy(obs),
-            actions=copy.deepcopy(action),
-            next_observations=copy.deepcopy(next_obs),
-            rewards=rew,
-            dones=done,
-            infos=info
+        transition = copy.deepcopy(
+            dict(
+                observations=obs,
+                actions=action,
+                next_observations=next_obs,
+                rewards=rew,               
+                masks=1.0 - done,
+                dones=done,
+                infos=info
+            )
         )
-        obs_list.append(transition["observations"])
-        act_list.append(transition["actions"])
-        next_obs_list.append(transition["next_observations"])
-        rew_list.append(transition["rewards"])
-        done_list.append(transition["dones"])
-        info_list.append(transition["infos"])
-
+        trajectory.append(transition)
+        
+        obs = next_obs
         prev_pos = desired_pos
         prev_quat = desired_quat
 
         time.sleep(unwrapped_env.control_dt)
 
         if done or truncated:
-            print("Environment ended prematurely during Stage 2.")
-            print("info:", info)
-            return (obs_list, act_list, next_obs_list, rew_list, done_list, info_list), info.get("succeed", False)
-
+            print("Environment done during Stage 2.")
+            return trajectory, info.get("succeed", False)
+        
     # At this point we consider the episode finished. 
     # In your environment, you might rely on `done` to come from the environment automatically.
     # But if not done yet, do a few more steps or handle end conditions:
-    for _ in range(50):
-        obs = next_obs
+    start_wait_time = time.time()
+
+    while np.linalg.norm(unwrapped_env.controller.error) > 1e-10:
         next_obs, rew, done, truncated, info = env.step(np.zeros(7))
+        frames.append(unwrapped_env.frames)
 
-        if frames is not None:
-            # If your obs contains images directly:
-            if "front" in next_obs and "wrist" in next_obs:
-                frames.append(
-                    np.concatenate((next_obs["front"], next_obs["wrist"]), axis=0)
-                )
-            else:
-                # Otherwise, render from the environment
-                frame1, frame2 = env.render()
-                frames.append(np.concatenate((frame1, frame2), axis=0))
-
-        transition = dict(
-            observations=copy.deepcopy(obs),
-            actions=np.zeros(7),
-            next_observations=copy.deepcopy(next_obs),
-            rewards=rew,
-            dones=done,
-            infos=info
+        transition = copy.deepcopy(
+            dict(
+                observations=obs,
+                actions=np.zeros(7),
+                next_observations=next_obs,
+                rewards=rew,
+                masks=1.0 - done,
+                dones=done,
+                infos=info
+            )
         )
-        obs_list.append(transition["observations"])
-        act_list.append(transition["actions"])
-        next_obs_list.append(transition["next_observations"])
-        rew_list.append(transition["rewards"])
-        done_list.append(transition["dones"])
-        info_list.append(transition["infos"])
+        trajectory.append(transition)
+        obs = next_obs
+
         if done or truncated:
-            print("Environment ended prematurely during Stage 2.")
-            print("info:", info)
+            print("Environment done during Stage 2.")
+            break
+        if (time.time() - start_wait_time) > WAIT_TIMEOUT:
+            # Timed out waiting for Stage 1 final pose
+            print("Environment ended prematurely during Stage 2.(Timeout)")
             break
 
     # Return transitions for the entire episode + success flag
-    return (obs_list, act_list, next_obs_list, rew_list, done_list, info_list), info.get("succeed", False)
+    return trajectory, info.get("succeed", False)
 
 
 def main(_):
     env = gymnasium.make("ur5ePegInHoleFixedGymEnv_state-v0", render_mode="human")
     unwrapped_env = env.unwrapped
 
-    # Just to illustrate action & observation spaces
-    print("Action space:", env.action_space)
-    print("Observation space:", env.observation_space)
+    obs, info = env.reset()
+    print("Reset done")
 
-    # We'll keep a list of ALL transitions from successful episodes only
     transitions = []
-
     success_count = 0
     success_needed = FLAGS.successes_needed
     pbar = tqdm(total=success_needed)
-
-    # For storing frames if we need video
     frames = []
-    episode_return = 0
+    trajectory = []
+    returns = 0
 
     while success_count < success_needed:
-        # Reset environment for a new episode
-        obs, info = env.reset()
-        episode_return = 0
-        frames = []
 
-        # Optionally record initial frame
-        if FLAGS.save_video:
-            if "front" in obs or "wrist" in obs:  # Check if image observations are available
-                frames.append(np.concatenate((obs["front"], obs["wrist"]), axis=0))  # Combine views
-            else:
-                frame1, frame2 = env.render()
-                frames.append(np.concatenate((frame1, frame2), axis=0))
-
-        for _ in range(50):
-            obs, rew, done, truncated, info = env.step(np.zeros(7))
-        
-            if frames is not None:
-                # If your obs contains images directly:
-                if "front" in obs and "wrist" in obs:
-                    frames.append(
-                        np.concatenate((obs["front"], obs["wrist"]), axis=0)
-                    )
-                else:
-                    # Otherwise, render from the environment
-                    frame1, frame2 = env.render()
-                    frames.append(np.concatenate((frame1, frame2), axis=0))
+        while np.linalg.norm(unwrapped_env.controller.error) > 1e-10:
+            next_obs, rew, done, truncated, info = env.step(np.zeros(7)) 
+            frames.append(unwrapped_env.frames)
+            transition = copy.deepcopy(
+            dict(
+                observations=obs,
+                actions=np.zeros(7),
+                next_observations=next_obs,
+                rewards=rew,
+                masks=1.0 - done,
+                dones=done,
+                infos=info,
+            )
+            )
+            trajectory.append(transition)
+            obs = next_obs
 
         # ------------- Execute the 2-stage demo -------------
-        (obs_list, act_list, next_obs_list, rew_list, done_list, info_list), success = run_two_stage_demo(env, unwrapped_env, frames=frames)
+        trajectory, success = run_two_stage_demo(env, unwrapped_env, _obs=obs, trajectory=trajectory, frames=frames)
 
-
-        # Compute return for logging
-        episode_return = sum(rew_list)
+        # Compute episode return (sum of rewards in 'trajectory')
+        returns = sum(t["rewards"] for t in trajectory)
 
         # If the environment provided a "succeed" flag, or you have some success metric:
         if success:
-            pbar.set_description(f"Episode Return: {episode_return:.2f} [SUCCESS]")
-            # Save these transitions
-            for o, a, no, r, d, i in zip(obs_list, act_list, next_obs_list, rew_list, done_list, info_list):
-                transitions.append(
-                    dict(
-                        observations=o,
-                        actions=a,
-                        next_observations=no,
-                        rewards=r,
-                        dones=d,
-                        infos=i
-                    )
-                )
+            pbar.set_description(f"Episode Return: {returns:.2f} [SUCCESS]")
             success_count += 1
             pbar.update(1)
+
+            # Add the entire trajectory to the global transitions list
+            for t in trajectory:
+                transitions.append(copy.deepcopy(t))
 
             # If saving video:
             if FLAGS.save_video:
@@ -452,18 +322,24 @@ def main(_):
                 imageio.mimsave(video_name, frames, fps=20)
                 print(f"Saved video to {video_name}")
         else:
-            pbar.set_description(f"Episode Return: {episode_return:.2f} [FAILED]")
-
+            pbar.set_description(f"Episode Return: {returns:.2f} [FAILED]")
+        trajectory = []
+        frames = []  # Clear frames for the next episode
+        returns = 0
+        obs, info = env.reset()
+        
     # Once we have all successful demos, save them
-    if not os.path.exists("./demo_data"):
-        os.makedirs("./demo_data")
-    uuid_str = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    file_name = f"./demo_data/{FLAGS.exp_name}_{success_needed}_demos_{uuid_str}.pkl"
+    if FLAGS.save_model:
+        if not os.path.exists("./demo_data"):
+            os.makedirs("./demo_data")
+        uuid_str = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        file_name = f"./demo_data/{FLAGS.exp_name}_{success_needed}_demos_{uuid_str}.pkl"
 
-    with open(file_name, "wb") as f:
-        pkl.dump(transitions, f)
+        with open(file_name, "wb") as f:
+            pkl.dump(transitions, f)
 
-    print(f"Saved {success_needed} successful demos to {file_name}")
+        print(f"Saved {success_needed} successful demos to {file_name}")
+
     env.close()
 
 

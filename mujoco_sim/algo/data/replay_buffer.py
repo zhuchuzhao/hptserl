@@ -4,7 +4,7 @@ from typing import Any, Iterator, Optional, Sequence, Tuple, Union
 import gymnasium as gym
 import jax
 import numpy as np
-from algo.data.dataset import Dataset, DatasetDict
+from mujoco_sim.algo.data.dataset import Dataset, DatasetDict
 
 
 def _init_replay_dict(

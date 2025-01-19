@@ -9,13 +9,13 @@ import numpy as np
 import optax
 from flax.core import FrozenDict
 
-from algo.common.common import JaxRLTrainState, ModuleDict, nonpytree_field
-from algo.common.encoding import EncodingWrapper
-from algo.common.typing import Batch, PRNGKey
-from algo.networks.actor_critic_nets import Policy
-from algo.networks.mlp import MLP
-from algo.utils.train_utils import _unpack
-from algo.vision.data_augmentations import batched_random_crop
+from mujoco_sim.algo.common.common import JaxRLTrainState, ModuleDict, nonpytree_field
+from mujoco_sim.algo.common.encoding import EncodingWrapper
+from mujoco_sim.algo.common.typing import Batch, PRNGKey
+from mujoco_sim.algo.networks.actor_critic_nets import Policy
+from mujoco_sim.algo.networks.mlp import MLP
+from mujoco_sim.algo.utils.train_utils import _unpack
+from mujoco_sim.algo.vision.data_augmentations import batched_random_crop
 
 
 class BCAgent(flax.struct.PyTreeNode):
@@ -35,8 +35,9 @@ class BCAgent(flax.struct.PyTreeNode):
 
     @partial(jax.jit, static_argnames="pmap_axis")
     def update(self, batch: Batch, pmap_axis: str = None):
-        if self.config["image_keys"][0] not in batch["next_observations"]:
-            batch = _unpack(batch)
+        if self.config["image_keys"]:
+            if self.config["image_keys"][0] not in batch["next_observations"]:
+                batch = _unpack(batch)
 
         rng, aug_rng = jax.random.split(self.state.rng)
         if "augmentation_function" in self.config.keys() and self.config["augmentation_function"] is not None:
@@ -148,7 +149,7 @@ class BCAgent(flax.struct.PyTreeNode):
         augmentation_function: Optional[callable] = None,
     ):
         if encoder_type == "resnet":
-            from algo.vision.resnet_v1 import resnetv1_configs
+            from mujoco_sim.algo.vision.resnet_v1 import resnetv1_configs
 
             encoders = {
                 image_key: resnetv1_configs["resnetv1-10"](
@@ -160,7 +161,7 @@ class BCAgent(flax.struct.PyTreeNode):
                 for image_key in image_keys
             }
         elif encoder_type == "resnet-pretrained":
-            from algo.vision.resnet_v1 import (
+            from mujoco_sim.algo.vision.resnet_v1 import (
                 PreTrainedResNetEncoder,
                 resnetv1_configs,
             )
@@ -223,7 +224,7 @@ class BCAgent(flax.struct.PyTreeNode):
         agent = cls(state, config)
 
         if encoder_type == "resnet-pretrained":  # load pretrained weights for ResNet-10
-            from algo.utils.train_utils import load_resnet10_params
+            from mujoco_sim.algo.utils.train_utils import load_resnet10_params
             agent = load_resnet10_params(agent, image_keys)
 
         return agent

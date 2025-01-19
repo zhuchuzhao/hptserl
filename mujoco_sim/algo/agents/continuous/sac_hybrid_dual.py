@@ -8,14 +8,14 @@ import flax.linen as nn
 import jax
 import jax.numpy as jnp
 
-from algo.common.common import JaxRLTrainState, ModuleDict, nonpytree_field
-from algo.common.encoding import EncodingWrapper
-from algo.common.optimizers import make_optimizer
-from algo.common.typing import Batch, Data, Params, PRNGKey
-from algo.networks.actor_critic_nets import Critic, Policy, GraspCritic, ensemblize
-from algo.networks.lagrange import GeqLagrangeMultiplier
-from algo.networks.mlp import MLP
-from algo.utils.train_utils import _unpack
+from mujoco_sim.algo.common.common import JaxRLTrainState, ModuleDict, nonpytree_field
+from mujoco_sim.algo.common.encoding import EncodingWrapper
+from mujoco_sim.algo.common.optimizers import make_optimizer
+from mujoco_sim.algo.common.typing import Batch, Data, Params, PRNGKey
+from mujoco_sim.algo.networks.actor_critic_nets import Critic, Policy, GraspCritic, ensemblize
+from mujoco_sim.algo.networks.lagrange import GeqLagrangeMultiplier
+from mujoco_sim.algo.networks.mlp import MLP
+from mujoco_sim.algo.utils.train_utils import _unpack
 
 
 class SACAgentHybridDualArm(flax.struct.PyTreeNode):
@@ -585,7 +585,7 @@ class SACAgentHybridDualArm(flax.struct.PyTreeNode):
         critic_network_kwargs["activate_final"] = True
 
         if encoder_type == "resnet":
-            from algo.vision.resnet_v1 import resnetv1_configs
+            from mujoco_sim.algo.vision.resnet_v1 import resnetv1_configs
 
             encoders = {
                 image_key: resnetv1_configs["resnetv1-10"](
@@ -597,7 +597,7 @@ class SACAgentHybridDualArm(flax.struct.PyTreeNode):
                 for image_key in image_keys
             }
         elif encoder_type == "resnet-pretrained":
-            from algo.vision.resnet_v1 import (
+            from mujoco_sim.algo.vision.resnet_v1 import (
                 PreTrainedResNetEncoder,
                 resnetv1_configs,
             )
@@ -677,7 +677,7 @@ class SACAgentHybridDualArm(flax.struct.PyTreeNode):
         )
 
         if "pretrained" in encoder_type:  # load pretrained weights for ResNet-10
-            from algo.utils.train_utils import load_resnet10_params
+            from mujoco_sim.algo.utils.train_utils import load_resnet10_params
             agent = load_resnet10_params(agent, image_keys)
 
         return agent

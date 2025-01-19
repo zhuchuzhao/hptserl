@@ -4,7 +4,7 @@ import flax.linen as nn
 import jax
 import jax.numpy as jnp
 
-from algo.common.common import default_init
+from mujoco_sim.algo.common.common import default_init
 
 
 class MLP(nn.Module):

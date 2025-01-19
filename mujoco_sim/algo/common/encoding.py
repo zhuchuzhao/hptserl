@@ -49,9 +49,15 @@ class EncodingWrapper(nn.Module):
                 image = jax.lax.stop_gradient(image)
 
             encoded.append(image)
+        
+        # If we have no images, encoded_list will be empty, so skip concatenation
+        if len(encoded) > 0:
+            encoded = jnp.concatenate(encoded, axis=-1)
+        else:
+            batch_size = observations["state"].shape[0]
+            encoded = jnp.zeros((batch_size, 0), dtype=jnp.float32)
 
-        encoded = jnp.concatenate(encoded, axis=-1)
-
+            
         if self.use_proprio:
             # project state to embeddings as well
             state = observations["state"]

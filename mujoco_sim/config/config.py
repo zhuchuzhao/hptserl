@@ -10,7 +10,7 @@ class PegEnvConfig():
             "action_scale": np.array([1,1, 1]),  # Scaling factors for position, orientation, and gripper control
             "control_dt": 0.02,  # Time step for controller updates
             "physics_dt": 0.002,  # Time step for physics simulation
-            "time_limit": 50.0,  # Time limit for each episode
+            "time_limit": 20.0,  # Time limit for each episode
             "seed": 0,  # Random seed
             "image_obs": False,  # Use image observations
         }
@@ -18,10 +18,10 @@ class PegEnvConfig():
         self.DEFAULT_CAM_CONFIG = {
         'type': mujoco.mjtCamera.mjCAMERA_FREE,  # Camera type
         'fixedcamid': 0,                            # ID of the fixed camera
-        'lookat': np.array([0.0, 0.0, 0.0]),        # Point the camera looks at
-        'distance': 1.1,                            # Distance from the lookat point
-        'azimuth': 180.0,                           # Horizontal angle
-        'elevation': -30.0,                         # Vertical angle
+        'lookat': np.array([-0.13658866, -0.07953108, -0.12050411]),        # Point the camera looks at
+        'distance': 0.7681,                            # Distance from the lookat point
+        'azimuth': -170.1003,                           # Horizontal angle
+        'elevation': -19.9855,                         # Vertical angle
         }
 
         # UR5e Robot Configuration
@@ -56,8 +56,8 @@ class PegEnvConfig():
         self.CONTROLLER_CONFIG = {
             "trans_damping_ratio": 0.996,  # Damping ratio for translational control
             "rot_damping_ratio": 0.286,  # Damping ratio for rotational control
-            "error_tolerance_pos": 0.001,  # Position error tolerance
-            "error_tolerance_ori": 0.001,  # Orientation error tolerance
+            "error_tolerance_pos": 0.0005,  # Position error tolerance
+            "error_tolerance_ori": 0.0005,  # Orientation error tolerance
             "trans_clip_min": np.array([-0.01, -0.01, -0.01]),  # Translational negative clipping limits
             "trans_clip_max": np.array([0.01, 0.01, 0.01]),  # Translational positive clipping limits
             "rot_clip_min": np.array([-0.03, -0.03, -0.03]),  # Rotational negative clipping limits

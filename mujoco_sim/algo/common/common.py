@@ -8,7 +8,7 @@ import jax.numpy as jnp
 import optax
 from flax import struct
 
-from algo.common.typing import Params, PRNGKey
+from mujoco_sim.algo.common.typing import Params, PRNGKey
 
 nonpytree_field = functools.partial(flax.struct.field, pytree_node=False)
 

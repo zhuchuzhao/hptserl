@@ -7,8 +7,8 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 
-from algo.vision.film_conditioning_layer import FilmConditioning
-from algo.vision.data_augmentations import resize
+from mujoco_sim.algo.vision.film_conditioning_layer import FilmConditioning
+from mujoco_sim.algo.vision.data_augmentations import resize
 ModuleDef = Any
 
 

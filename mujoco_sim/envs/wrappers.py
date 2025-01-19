@@ -188,10 +188,10 @@ class SpacemouseIntervention(gymnasium.ActionWrapper):
         except OSError:
             # If SpaceMouse is not found, fall back to Keyboard
             print("SpaceMouse not found, falling back to Keyboard.")
-            # self.expert = Keyboard()
-            self.expert = MujocoKeyboard()
-            viewer = env.unwrapped._viewer.viewer
-            viewer.set_external_key_callback(self.expert.external_key_callback)
+            self.expert = Keyboard()
+            # self.expert = MujocoKeyboard()
+            # viewer = env.unwrapped._viewer.viewer
+            # viewer.set_external_key_callback(self.expert.external_key_callback)
 
         self.expert.start_control()
         self.last_intervene = 0
@@ -235,9 +235,6 @@ class SpacemouseIntervention(gymnasium.ActionWrapper):
                 info["intervene_action"] = new_action
                 # print("Intervened with action")
             return obs, rew, done, truncated, info
-
-
-
 
 
 def stack_obs(obs):

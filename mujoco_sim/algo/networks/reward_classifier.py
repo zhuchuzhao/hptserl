@@ -10,8 +10,8 @@ import requests
 import os
 from tqdm import tqdm
 
-from algo.vision.resnet_v1 import resnetv1_configs, PreTrainedResNetEncoder
-from algo.common.encoding import EncodingWrapper
+from mujoco_sim.algo.vision.resnet_v1 import resnetv1_configs, PreTrainedResNetEncoder
+from mujoco_sim.algo.common.encoding import EncodingWrapper
 
 
 class BinaryClassifier(nn.Module):

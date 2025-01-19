@@ -411,7 +411,7 @@ class ur5ePegInHoleGymEnv(MujocoGymEnv):
         # Reset the arm to the port position.  
         step_count = 0
         while step_count < 500:
-            q, dq = self.controller.control(
+            q= self.controller.control(
                 pos=self._data.mocap_pos[0].copy(),
                 ori=self._data.mocap_quat[0].copy(),
             )

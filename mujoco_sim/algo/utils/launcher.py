@@ -6,13 +6,13 @@ import jax.numpy as jnp
 
 from agentlace.trainer import TrainerConfig
 
-from algo.common.typing import Batch, PRNGKey
-from algo.common.wandb import WandBLogger
-from algo.agents.continuous.bc import BCAgent
-from algo.agents.continuous.sac import SACAgent
-from algo.agents.continuous.sac_hybrid_single import SACAgentHybridSingleArm
-from algo.agents.continuous.sac_hybrid_dual import SACAgentHybridDualArm
-from algo.vision.data_augmentations import batched_random_crop
+from mujoco_sim.algo.common.typing import Batch, PRNGKey
+from mujoco_sim.algo.common.wandb import WandBLogger
+from mujoco_sim.algo.agents.continuous.bc import BCAgent
+from mujoco_sim.algo.agents.continuous.sac import SACAgent
+from mujoco_sim.algo.agents.continuous.sac_hybrid_single import SACAgentHybridSingleArm
+from mujoco_sim.algo.agents.continuous.sac_hybrid_dual import SACAgentHybridDualArm
+from mujoco_sim.algo.vision.data_augmentations import batched_random_crop
 
 ##############################################################################
 

@@ -3,8 +3,8 @@ from typing import Iterable, Optional, Tuple
 
 import gymnasium as gym
 import numpy as np
-from algo.data.dataset import DatasetDict, _sample
-from algo.data.replay_buffer import ReplayBuffer
+from mujoco_sim.algo.data.dataset import DatasetDict, _sample
+from mujoco_sim.algo.data.replay_buffer import ReplayBuffer
 from flax.core import frozen_dict
 from gymnasium.spaces import Box
 
@@ -22,7 +22,11 @@ class MemoryEfficientReplayBuffer(ReplayBuffer):
         self.pixel_keys = pixel_keys
 
         observation_space = copy.deepcopy(observation_space)
-        self._num_stack = None
+        if len(self.pixel_keys) == 0:
+            # No image/pixels used, default to 1.
+            self._num_stack = 1
+        else:
+            self._num_stack = None
         for pixel_key in self.pixel_keys:
             pixel_obs_space = observation_space.spaces[pixel_key]
             if self._num_stack is None:

@@ -7,7 +7,7 @@ import mujoco_sim
 
 
 # env = gymnasium.make("ur5ePegInHoleGymEnv_state-v0", render_mode="human")
-env = gymnasium.make("ur5ePegInHoleFixedGymEnv_vision-v0", render_mode="human")
+env = gymnasium.make("ur5ePegInHoleFixedGymEnv_state-v0", render_mode="human")
 
 # env = gymnasium.make("ur5ePegInHoleGymEnv_vision-v0", render_mode="human")
 

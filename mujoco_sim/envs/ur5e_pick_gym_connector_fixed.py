@@ -23,57 +23,59 @@ class ur5ePegInHoleFixedGymEnv(MujocoGymEnv):
     def __init__(self, render_mode: Literal["rgb_array", "human"] = "rgb_array", config=None):
         # Initialize configuration
         if config is None:
-            config = PegEnvConfig()
+            self.config = PegEnvConfig()
         else:
-            config = PegEnvConfig(**config)
+            self.config = PegEnvConfig(**config)
 
         # Rendering configuration
-        self.render_width = config.RENDERING_CONFIG["width"]
-        self.render_height = config.RENDERING_CONFIG["height"]
-        self.camera_id = (0, 1)  # Camera IDs for rendering
+        self.render_width = self.config.RENDERING_CONFIG["width"]
+        self.render_height = self.config.RENDERING_CONFIG["height"]
+        self.camera_id = (0, 1, 4, 5)  # Camera IDs for rendering
         self.render_spec = GymRenderingSpec(
-        height=config.RENDERING_CONFIG["height"],
-        width=config.RENDERING_CONFIG["width"],
+        height=self.config.RENDERING_CONFIG["height"],
+        width=self.config.RENDERING_CONFIG["width"],
         )
+
+        self.frames = None
 
         super().__init__(
             xml_path=_XML_PATH,
-            control_dt=config.ENV_CONFIG["control_dt"],
-            physics_dt=config.ENV_CONFIG["physics_dt"],
-            time_limit=config.ENV_CONFIG["time_limit"],
-            seed=config.ENV_CONFIG["seed"],
+            control_dt=self.config.ENV_CONFIG["control_dt"],
+            physics_dt=self.config.ENV_CONFIG["physics_dt"],
+            time_limit=self.config.ENV_CONFIG["time_limit"],
+            seed=self.config.ENV_CONFIG["seed"],
             render_spec=self.render_spec,
         )
 
-        self._action_scale = config.ENV_CONFIG["action_scale"]
+        self._action_scale = self.config.ENV_CONFIG["action_scale"]
         self.render_mode = render_mode
-        self.image_obs = config.ENV_CONFIG["image_obs"]
+        self.image_obs = self.config.ENV_CONFIG["image_obs"]
 
-        self.default_cam_config = config.DEFAULT_CAM_CONFIG
-
+        self.default_cam_config = self.config.DEFAULT_CAM_CONFIG
+        self._render_cache = {}
 
         # UR5e-specific configuration
-        self.ur5e_home = config.UR5E_CONFIG["home_position"]
-        self.ur5e_reset = config.UR5E_CONFIG["reset_position"]
-        self.cartesian_bounds = config.UR5E_CONFIG["default_cartesian_bounds"]
-        self.restrict_cartesian_bounds = config.UR5E_CONFIG["restrict_cartesian_bounds"]
-        self.default_port_pos = config.UR5E_CONFIG["default_port_pos"]
-        self.port_sampling_bounds = config.UR5E_CONFIG["port_sampling_bounds"]
-        self.connector_sampling_bounds = config.UR5E_CONFIG["connector_sampling_bounds"]
-        self.tcp_xyz_randomize = config.UR5E_CONFIG["tcp_xyz_randomize"]
-        self.port_xy_randomize = config.UR5E_CONFIG["port_xy_randomize"]
-        self.port_z_randomize = config.UR5E_CONFIG["port_z_randomize"]
-        self.port_orientation_randomize = config.UR5E_CONFIG["port_orientation_randomize"]
-        self.max_port_orient = config.UR5E_CONFIG["max_port_orient_randomize"]
-        self.tcp_orient_randomize = config.UR5E_CONFIG["tcp_orient_randomize"]
-        self.max_tcp_orient_randomize = config.UR5E_CONFIG["max_tcp_orient_randomize"]
-        self.tcp_randomization_bounds = config.UR5E_CONFIG["tcp_randomization_bounds"]
-        self.reset_tolerance = config.UR5E_CONFIG["reset_tolerance"]
-        self.gravity_compensation = config.CONTROLLER_CONFIG.get("gravity_compensation", True)
+        self.ur5e_home = self.config.UR5E_CONFIG["home_position"]
+        self.ur5e_reset = self.config.UR5E_CONFIG["reset_position"]
+        self.cartesian_bounds = self.config.UR5E_CONFIG["default_cartesian_bounds"]
+        self.restrict_cartesian_bounds = self.config.UR5E_CONFIG["restrict_cartesian_bounds"]
+        self.default_port_pos = self.config.UR5E_CONFIG["default_port_pos"]
+        self.port_sampling_bounds = self.config.UR5E_CONFIG["port_sampling_bounds"]
+        self.connector_sampling_bounds = self.config.UR5E_CONFIG["connector_sampling_bounds"]
+        self.tcp_xyz_randomize = self.config.UR5E_CONFIG["tcp_xyz_randomize"]
+        self.port_xy_randomize = self.config.UR5E_CONFIG["port_xy_randomize"]
+        self.port_z_randomize = self.config.UR5E_CONFIG["port_z_randomize"]
+        self.port_orientation_randomize = self.config.UR5E_CONFIG["port_orientation_randomize"]
+        self.max_port_orient = self.config.UR5E_CONFIG["max_port_orient_randomize"]
+        self.tcp_orient_randomize = self.config.UR5E_CONFIG["tcp_orient_randomize"]
+        self.max_tcp_orient_randomize = self.config.UR5E_CONFIG["max_tcp_orient_randomize"]
+        self.tcp_randomization_bounds = self.config.UR5E_CONFIG["tcp_randomization_bounds"]
+        self.reset_tolerance = self.config.UR5E_CONFIG["reset_tolerance"]
+        self.gravity_compensation = self.config.CONTROLLER_CONFIG.get("gravity_compensation", True)
 
 
         # Reward configuration
-        self.reward_config = config.REWARD_CONFIG
+        self.reward_config = self.config.REWARD_CONFIG
         self.sparse_reward = 0.0
         self.dense_reward = 0.0
 
@@ -130,8 +132,9 @@ class ur5ePegInHoleFixedGymEnv(MujocoGymEnv):
         self._hand_geom = self._model.geom("hande_base").id
         self._connector_head_geom = self._model.geom("connector_head").id
 
-        # Update the default cartesian bounds geom size and position
+        # Update the default cartesian bounds geom size and position        
         self._cartesian_bounds_geom_id = self._model.geom("cartesian_bounds").id
+
         # Extract bounds
         lower_bounds, upper_bounds = self.cartesian_bounds
         center = (upper_bounds + lower_bounds) / 2.0
@@ -149,13 +152,15 @@ class ur5ePegInHoleFixedGymEnv(MujocoGymEnv):
         data=self._data,
         site_id=self._pinch_site_id,
         dof_ids=self._ur5e_dof_ids,
-        config=config.CONTROLLER_CONFIG,
+        config=self.config.CONTROLLER_CONFIG,
         )
         obs_bound = 1e6
         self.observation_space = spaces.Dict(
             {
                 "state": spaces.Dict(
-                    {
+                    {   "controller_pose": spaces.Box(
+                            -obs_bound, obs_bound, shape=(6,), dtype=np.float32 
+                        ),                        
                         "ur5e/tcp_pose": spaces.Box(
                             -obs_bound, obs_bound, shape=(6,), dtype=np.float32
                         ),
@@ -184,6 +189,9 @@ class ur5ePegInHoleFixedGymEnv(MujocoGymEnv):
                 {
                 "state": spaces.Dict(
                     {
+                        "controller_pose": spaces.Box(
+                                -obs_bound, obs_bound, shape=(6,), dtype=np.float32 
+                        ),        
                         "ur5e/tcp_pose": spaces.Box(
                             -obs_bound, obs_bound, shape=(6,), dtype=np.float32
                         ),
@@ -236,7 +244,7 @@ class ur5ePegInHoleFixedGymEnv(MujocoGymEnv):
             window_height=self.height,
             default_cam_config=self.default_cam_config
         )
-        self._viewer.render(self.render_mode)
+        # self._viewer.render(self.render_mode)
 
     def reset(
         self, seed=None, **kwargs
@@ -392,15 +400,23 @@ class ur5ePegInHoleFixedGymEnv(MujocoGymEnv):
 
         # Reset the arm to the port position.  
         step_count = 0
-        while step_count < 500:
-            q = self.controller.control(
+        while step_count < 2000:
+            ctrl = self.controller.control(
                 pos=self._data.mocap_pos[0].copy(),
                 ori=self._data.mocap_quat[0].copy(),
             )
-            self._data.qpos[self._ur5e_dof_ids] = q
-            mujoco.mj_forward(self._model, self._data)
-            error = self.controller.ori_err_norm + self.controller.x_err_norm
-            if error <= self.reset_tolerance:
+            # self._data.qpos[self._ur5e_dof_ids] = ctrl
+            self._data.ctrl[self._ur5e_ctrl_ids] = ctrl
+            if self.gravity_compensation:
+                self._data.qfrc_applied[:] = 0.0
+                jac = np.empty((3, self._model.nv))
+                subtreeid = 1
+                total_mass = self._model.body_subtreemass[subtreeid]
+                mujoco.mj_jacSubtreeCom(self._model, self._data, jac, subtreeid)
+                self._data.qfrc_applied[:] -=  self._model.opt.gravity * total_mass @ jac
+            mujoco.mj_step(self._model, self._data)
+
+            if np.linalg.norm(self.controller.error) <= 0.0001:
                 break  # Goal reached
             step_count += 1
         print(f"Resetting environment after {step_count} steps.")
@@ -479,13 +495,24 @@ class ur5ePegInHoleFixedGymEnv(MujocoGymEnv):
                 self._data.qfrc_applied[:] -=  self._model.opt.gravity * total_mass @ jac
 
             mujoco.mj_step(self._model, self._data)
-            
+
         obs = self._compute_observation()
 
         rew, task_complete = self._compute_reward()
         terminated = task_complete
         truncated = self.time_limit_exceeded()  
-        return obs, rew, terminated, truncated, {"succeed": task_complete}
+        # Add all render cache frames to the info dictionary
+        info = {
+            "succeed": task_complete,
+        }
+        self.frames = np.concatenate(
+            (
+                np.concatenate((self._render_cache["front"], self._render_cache["top"]), axis=1),
+                np.concatenate((self._render_cache["wrist"], self._render_cache["wrist2"]), axis=1),
+            ),
+            axis=0,
+        )
+        return obs, rew, terminated, truncated, info
 
     def render(self) -> np.ndarray:
         rendered_frames = []
@@ -510,6 +537,15 @@ class ur5ePegInHoleFixedGymEnv(MujocoGymEnv):
     def _compute_observation(self) -> dict:
         obs = {}
         obs["state"] = {}
+
+        # control pose for better performance
+        controller_pos = self._data.mocap_pos[0].copy().astype(np.float32)
+        controller_ori_quat = self._data.mocap_quat[0].copy().astype(np.float32)
+        controller_ori_euler = np.zeros(3)
+        mujoco.mju_quat2Vel(controller_ori_euler, controller_ori_quat, 1.0)
+        obs["state"]["controller_pose"] = np.concatenate(
+            (controller_pos, controller_ori_euler)
+        ).astype(np.float32)
 
         tcp_pos = self._data.sensor("hande/pinch_pos").data.astype(np.float32)
         tcp_ori_quat = self._data.sensor("hande/pinch_quat").data.astype(np.float32)
@@ -550,18 +586,28 @@ class ur5ePegInHoleFixedGymEnv(MujocoGymEnv):
         self.wrist_torque = cfrc_int[:3] - np.cross(dif, cfrc_int[3:])
         obs["state"]["ur5e/wrist_torque"] = self.wrist_torque.astype(np.float32)
 
+        if self.render_mode == "human":
+            self._viewer.render(self.render_mode)
+            rgb_arr_1 = self._viewer.viewer.rgb_1
+            rgb_arr_2 = self._viewer.viewer.rgb_2
+            rgb_arr_3 = self._viewer.viewer.rgb_3
+            rgb_arr_4 = self._viewer.viewer.rgb_4
+            rgb_img_1 = rgb_arr_1.reshape(self._viewer.viewer.offscreen_height, self._viewer.viewer.offscreen_width, 3)
+            rgb_img_2 = rgb_arr_2.reshape(self._viewer.viewer.offscreen_height, self._viewer.viewer.offscreen_width, 3)
+            rgb_img_3 = rgb_arr_3.reshape(self._viewer.viewer.offscreen_height, self._viewer.viewer.offscreen_width, 3)
+            rgb_img_4 = rgb_arr_4.reshape(self._viewer.viewer.offscreen_height, self._viewer.viewer.offscreen_width, 3)
+            self._render_cache = {}
+            self._render_cache["front"] = rgb_img_1[::-1, :, :]
+            self._render_cache["top"] = rgb_img_2[::-1, :, :]
+            self._render_cache["wrist"] = rgb_img_3[::-1, :, :]
+            self._render_cache["wrist2"] = rgb_img_4[::-1, :, :]
+
+        else:
+            self._render_cache["front"], self._render_cache["top"], self._render_cache["wrist"], self._render_cache["wrist2"] = self.render()
 
         if self.image_obs:
             obs["images"] = {}
-            if self.render_mode == "human":
-                rgb_arr_1 = self._viewer.viewer.rgb_1
-                rgb_arr_2 = self._viewer.viewer.rgb_2
-                rgb_img_1 = rgb_arr_1.reshape(self._viewer.viewer.offscreen_height, self._viewer.viewer.offscreen_width, 3)
-                rgb_img_2 = rgb_arr_2.reshape(self._viewer.viewer.offscreen_height, self._viewer.viewer.offscreen_width, 3)
-                obs["images"]["front"] = rgb_img_1[::-1, :, :]
-                obs["images"]["wrist"] = rgb_img_2[::-1, :, :]
-            else:
-                obs["images"]["front"], obs["images"]["wrist"] = self.render()
+            obs["images"]["front"], obs["images"]["wrist"] = self._render_cache["front"], self._render_cache["wrist2"]
         else:
             connector_pos = self._data.sensor("connector_head_pos").data.astype(np.float32)
             connector_ori_quat = self._data.sensor("connector_head_quat").data.astype(np.float32)
@@ -575,9 +621,6 @@ class ur5ePegInHoleFixedGymEnv(MujocoGymEnv):
             mujoco.mju_quat2Vel(port_ori_euler, port_ori_quat, 1.0)
             obs["state"]["port_pose"] = np.concatenate((port_pos, port_ori_euler)).astype(np.float32)
 
-        if self.render_mode == "human":
-            self._viewer.render(self.render_mode)
-
         return obs
 
     def _compute_reward(self) -> float:
@@ -590,13 +633,13 @@ class ur5ePegInHoleFixedGymEnv(MujocoGymEnv):
         port_bottom_quat = sensor_data("port_bottom_quat").data
         distance = np.linalg.norm(connector_bottom_pos - port_bottom_pos)
         z_distance = abs(connector_bottom_pos[2] - port_bottom_pos[2])
-
+ 
         # Orientation Control
         mujoco.mju_negQuat(self.quat_conj, connector_head_ori)
         mujoco.mju_mulQuat(self.quat_err, port_bottom_quat, self.quat_conj)
         mujoco.mju_quat2Vel(self.ori_err, self.quat_err, 1.0)
         distance += 0.5*np.linalg.norm(self.ori_err)
-
+            
         # Task completion
         task_complete = distance < self.reward_config["task_complete_tolerance"]
         task_complete_z = z_distance < self.reward_config["task_complete_tolerance"]

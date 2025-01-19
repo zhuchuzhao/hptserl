@@ -11,11 +11,11 @@ register(
     id="ur5ePegInHoleGymEnv_state-v0",
     entry_point="mujoco_sim.envs:ur5ePegInHoleGymEnv",
     additional_wrappers=(
-        # WrapperSpec(
-        #     name='GripperCloseEnv',
-        #     entry_point='mujoco_sim.envs.wrappers:GripperCloseEnv',  # Replace with actual module path
-        #     kwargs={},  # Add any necessary kwargs for this wrapper
-        # ),
+        WrapperSpec(
+            name='GripperCloseEnv',
+            entry_point='mujoco_sim.envs.wrappers:GripperCloseEnv',  # Replace with actual module path
+            kwargs={},  # Add any necessary kwargs for this wrapper
+        ),
         WrapperSpec(
             name='SpacemouseIntervention',
             entry_point='mujoco_sim.envs.wrappers:SpacemouseIntervention',
@@ -36,6 +36,7 @@ register(
     kwargs={
         "config": {
             "UR5E_CONFIG": {
+            "restrict_cartesian_bounds": True,
             "port_xy_randomize": False,  # Randomize port xy placement
             "port_z_randomize": False,  # Randomize port z placement
             "port_orientation_randomize": False,  # Randomize port placement
@@ -120,8 +121,8 @@ register(
     entry_point="mujoco_sim.envs:ur5ePegInHoleFixedGymEnv",
     additional_wrappers=(
         WrapperSpec(
-            name='GripperCloseEnv',
-            entry_point='mujoco_sim.envs.wrappers:GripperCloseEnv',  # Replace with actual module path
+            name='XYZGripperCloseEnv',
+            entry_point='mujoco_sim.envs.wrappers:XYZGripperCloseEnv',  # Replace with actual module path
             kwargs={},  # Add any necessary kwargs for this wrapper
         ),
         WrapperSpec(
@@ -133,11 +134,14 @@ register(
             name='ObsWrapper',
             entry_point='mujoco_sim.envs.wrappers:ObsWrapper',  # Replace with actual module path
             kwargs={
-                # 'proprio_keys': [
-                #     "ur5e/tcp_pose",
-                #     "ur5e/wrist_force",
-                #     "ur5e/wrist_torque",
-                # ],
+                'proprio_keys': [
+                    "controller_pose",
+                    "ur5e/tcp_pose",
+                    "ur5e/tcp_vel",
+                    "ur5e/wrist_force",
+                    "ur5e/wrist_torque",
+                    "connector_pose",
+                ],
             },     
                         ),
             WrapperSpec(
@@ -152,6 +156,7 @@ register(
     kwargs={
         "config": {
             "UR5E_CONFIG": {
+            "restrict_cartesian_bounds": True,
             "port_xy_randomize": False,  # Randomize port xy placement
             "port_z_randomize": False,  # Randomize port z placement
             "port_orientation_randomize": False,  # Randomize port placement
@@ -161,10 +166,10 @@ register(
                 "z": 0,  # Maximum deviation in degrees around z-axis
             },   
             "tcp_xyz_randomize": True,  # Randomize tcp xyz placement
-            "tcp_orient_randomize": True,
+            "tcp_orient_randomize": False,
             "max_tcp_orient_randomize": {
-                "x": 0,  # Maximum deviation in degrees around x-axis
-                "y": 0,  # Maximum deviation in degrees around y-axis
+                "x": 45,  # Maximum deviation in degrees around x-axis
+                "y": 45,  # Maximum deviation in degrees around y-axis
                 "z": 45,  # Maximum deviation in degrees around z-axis
             },                
             },
@@ -175,13 +180,17 @@ register(
     },
 )
 
+
+
+
+
 register(
     id="ur5ePegInHoleFixedGymEnv_vision-v0",
     entry_point="mujoco_sim.envs:ur5ePegInHoleFixedGymEnv",
     additional_wrappers=(
         WrapperSpec(
-            name='GripperCloseEnv',
-            entry_point='mujoco_sim.envs.wrappers:GripperCloseEnv',  # Replace with actual module path
+            name='XYZGripperCloseEnv',
+            entry_point='mujoco_sim.envs.wrappers:XYZGripperCloseEnv',  # Replace with actual module path
             kwargs={},  # Add any necessary kwargs for this wrapper
         ),
         WrapperSpec(

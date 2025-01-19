@@ -3,8 +3,8 @@ from typing import Union, Iterable
 
 import gymnasium as gym
 import jax
-from algo.data.replay_buffer import ReplayBuffer
-from algo.data.memory_efficient_replay_buffer import (
+from mujoco_sim.algo.data.replay_buffer import ReplayBuffer
+from mujoco_sim.algo.data.memory_efficient_replay_buffer import (
     MemoryEfficientReplayBuffer,
 )
 
