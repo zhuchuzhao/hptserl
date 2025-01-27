@@ -7,10 +7,10 @@ class PegEnvConfig():
     def __init__(self, **kwargs):
         # General Environment Configuration
         self.ENV_CONFIG = {
-            "action_scale": np.array([1,1, 1]),  # Scaling factors for position, orientation, and gripper control
+            "action_scale": np.array([0.0001,0.0001, 0.0001]),  # Scaling factors for position, orientation, and gripper control
             "control_dt": 0.02,  # Time step for controller updates
             "physics_dt": 0.002,  # Time step for physics simulation
-            "time_limit": 20.0,  # Time limit for each episode
+            "time_limit": 25.0,  # Time limit for each episode
             "seed": 0,  # Random seed
             "image_obs": False,  # Use image observations
         }
@@ -48,7 +48,7 @@ class PegEnvConfig():
                 "y": 0,  # Maximum deviation in degrees around y-axis
                 "z": 0,  # Maximum deviation in degrees around z-axis
             },
-            "tcp_randomization_bounds": np.array([[-0.025, -0.025, 0.06], [0.025, 0.025, 0.1]]),  # Randomization bounds for port positions xyz
+            "tcp_randomization_bounds": np.array([[-0.005, -0.005, 0.06], [0.005, 0.005, 0.06]]),  # Randomization bounds for port positions xyz
             "reset_tolerance": 0.06,
         }
 
@@ -56,7 +56,7 @@ class PegEnvConfig():
         self.CONTROLLER_CONFIG = {
             "trans_damping_ratio": 0.996,  # Damping ratio for translational control
             "rot_damping_ratio": 0.286,  # Damping ratio for rotational control
-            "error_tolerance_pos": 0.0005,  # Position error tolerance
+            "error_tolerance_pos": 0.00025,  # Position error tolerance
             "error_tolerance_ori": 0.0005,  # Orientation error tolerance
             "trans_clip_min": np.array([-0.01, -0.01, -0.01]),  # Translational negative clipping limits
             "trans_clip_max": np.array([0.01, 0.01, 0.01]),  # Translational positive clipping limits

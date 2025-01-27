@@ -30,7 +30,7 @@ flags.DEFINE_integer("seed", 42, "Random seed.")
 flags.DEFINE_string("ip", "localhost", "IP address of the learner.")
 flags.DEFINE_string("bc_checkpoint_path", "/home/fmdazhar/ws/internship/mujoco_state/mujoco_sim/examples/checkpoint", "Path to save checkpoints.")
 flags.DEFINE_integer("eval_n_trajs", 5, "Number of trajectories to evaluate.")
-flags.DEFINE_integer("train_steps", 20_000, "Number of pretraining steps.")
+flags.DEFINE_integer("train_steps", 50_000, "Number of pretraining steps.")
 flags.DEFINE_bool("save_video", False, "Save video of the evaluation.")
 
 
@@ -185,7 +185,7 @@ def main(_):
                 transitions = pkl.load(f)
                 for transition in transitions:
                     if np.linalg.norm(transition['actions']) > 0.0:
-                        transition["actions"] = transition["actions"][:6]
+                        # transition["actions"] = transition["actions"][:6]
                         bc_replay_buffer.insert(transition)
         print(f"bc replay buffer size: {len(bc_replay_buffer)}")
 

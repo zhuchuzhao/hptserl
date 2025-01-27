@@ -54,22 +54,18 @@ def run_two_stage_demo(env, unwrapped_env, _obs=None, trajectory=None, frames=No
     d = unwrapped_env.data
     obs = _obs
 
-    # --------------------------------------------------
-    #  Retrieve the initial pose
-    # --------------------------------------------------
-    initial_pos = d.sensor("connector_bottom_pos").data.copy()
-    initial_quat = d.sensor("connector_head_quat").data.copy()
+    # initial_pos = d.sensor("connector_bottom_pos").data.copy()
+    # initial_quat = d.sensor("connector_head_quat").data.copy()
 
-    # --------------------------------------------------
-    #  Retrieve the target pose
-    # --------------------------------------------------
+    initial_pos = d.mocap_pos[0].copy()
+    initial_quat = d.mocap_quat[0].copy()
     port_bottom_pos = d.sensor("port_bottom_pos").data.copy()
     port_bottom_quat = d.sensor("port_bottom_quat").data.copy()
 
     # --------------------------------------------------
     # 1) Define an intermediate pose "above" the port
     # --------------------------------------------------
-    random_offset_z = np.random.uniform(0.02, 0.05)
+    random_offset_z = np.random.uniform(0.05, 0.1)
     above_port_pos = port_bottom_pos.copy()
     above_port_pos[2] += random_offset_z
 
@@ -168,10 +164,11 @@ def run_two_stage_demo(env, unwrapped_env, _obs=None, trajectory=None, frames=No
     # --------------------------------------------------
     # 3) Stage 2: descend from above_port_pos to port_bottom_pos
     # --------------------------------------------------
-    # Retrieve pose again (in case there's drift)
-    initial_pos = d.sensor("connector_bottom_pos").data.copy()
-    initial_quat = d.sensor("connector_head_quat").data.copy()
-
+    # initial_pos = d.sensor("connector_bottom_pos").data.copy()
+    # initial_quat = d.sensor("connector_head_quat").data.copy()
+    
+    initial_pos = d.mocap_pos[0].copy()
+    initial_quat = d.mocap_quat[0].copy()
     port_bottom_pos = d.sensor("port_bottom_pos").data.copy()
     port_bottom_quat = d.sensor("port_bottom_quat").data.copy()
 

@@ -1,8 +1,6 @@
-# Ignore ROS workspace build, devel, logs, and catkin tools directories
-/catkin_ws/build/
-/catkin_ws/devel/
-/catkin_ws/logs/
-/catkin_ws/.catkin_tools/
+/mujoco_sim/examples/checkpoint/
+/mujoco_sim/examples/demo_data/
+
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

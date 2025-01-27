@@ -188,10 +188,8 @@ class SpacemouseIntervention(gymnasium.ActionWrapper):
         except OSError:
             # If SpaceMouse is not found, fall back to Keyboard
             print("SpaceMouse not found, falling back to Keyboard.")
-            self.expert = Keyboard()
-            # self.expert = MujocoKeyboard()
-            # viewer = env.unwrapped._viewer.viewer
-            # viewer.set_external_key_callback(self.expert.external_key_callback)
+            # self.expert = Keyboard()
+            self.expert = MujocoKeyboard()
 
         self.expert.start_control()
         self.last_intervene = 0
@@ -211,7 +209,7 @@ class SpacemouseIntervention(gymnasium.ActionWrapper):
             # Handle reset signal
             return None, False
 
-        if np.linalg.norm(action_[:-1]) > 0.001 :
+        if np.linalg.norm(action_[:-1]) > 0.0001 :
             self.last_intervene = time.time()
             self.prev_grasp = action_[-1]  # Update the previous grasp state
             
@@ -236,7 +234,23 @@ class SpacemouseIntervention(gymnasium.ActionWrapper):
                 # print("Intervened with action")
             return obs, rew, done, truncated, info
 
+    def reset(self, **kwargs):
+        """Reset the environment and attach the keyboard callback (if needed)."""
+        obs, info = super().reset(**kwargs)
 
+        # Now that the environment is reset, the viewer should exist.
+        if isinstance(self.expert, MujocoKeyboard):
+            render_mode = getattr(self.env.unwrapped, "render_mode", None)
+            if render_mode == "human":
+                viewer = getattr(self.env.unwrapped._viewer, "viewer", None)
+                # Make sure the viewer actually has 'set_external_key_callback'
+                if viewer is not None and hasattr(viewer, "set_external_key_callback"):
+                    viewer.set_external_key_callback(self.expert.external_key_callback)
+                viewer = self.env.unwrapped._viewer.viewer
+                viewer.set_external_key_callback(self.expert.external_key_callback)
+
+        return obs, info
+    
 def stack_obs(obs):
     dict_list = {k: [dic[k] for dic in obs] for k in obs[0]}
     return jax.tree_map(

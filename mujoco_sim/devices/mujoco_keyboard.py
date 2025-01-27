@@ -16,14 +16,14 @@ class MujocoKeyboard:
         rot_sensitivity (float): Magnitude of scale input rotation commands scaling
     """
 
-    def __init__(self, pos_sensitivity=0.005*0.03, rot_sensitivity=0.005*5):
+    def __init__(self, pos_sensitivity=1/1000, rot_sensitivity=1/100):
         self._display_controls()
 
         self._reset_internal_state()
 
         self._reset_state = 0
         self._enabled = False
-        self._pos_step = 0.05
+        self._pos_step = 1/150
 
         self.pos_sensitivity = pos_sensitivity
         self.rot_sensitivity = rot_sensitivity

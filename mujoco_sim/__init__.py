@@ -1,4 +1,5 @@
 from mujoco_sim.mujoco_gym_env import GymRenderingSpec, MujocoGymEnv
+import numpy as np
 
 __all__ = [
     "MujocoGymEnv",
@@ -114,8 +115,6 @@ register(
 
 
 
-
-
 register(
     id="ur5ePegInHoleFixedGymEnv_state-v0",
     entry_point="mujoco_sim.envs:ur5ePegInHoleFixedGymEnv",
@@ -166,12 +165,16 @@ register(
                 "z": 0,  # Maximum deviation in degrees around z-axis
             },   
             "tcp_xyz_randomize": True,  # Randomize tcp xyz placement
+            "tcp_randomization_bounds": np.array([[-0.005, -0.005, 0.06], [0.005, 0.005, 0.06]]),  # Randomization bounds for port positions xyz
             "tcp_orient_randomize": False,
             "max_tcp_orient_randomize": {
                 "x": 45,  # Maximum deviation in degrees around x-axis
                 "y": 45,  # Maximum deviation in degrees around y-axis
                 "z": 45,  # Maximum deviation in degrees around z-axis
             },                
+            },
+            "REWARD_CONFIG" : {
+            "reward_shaping": True,  # Use dense reward shaping
             },
             "ENV_CONFIG": {
                 "image_obs": False,  # Use image observations

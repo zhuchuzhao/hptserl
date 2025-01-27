@@ -320,7 +320,7 @@ class ur5ePegInHoleFixedGymEnv(MujocoGymEnv):
         
         if z_min < 0.0:
             z_offset = -z_min
-            print(f"Adjusting port height by {z_offset} m.")
+            # print(f"Adjusting port height by {z_offset} m.")
         else:
             z_offset = 0.0
 
@@ -579,9 +579,10 @@ class ur5ePegInHoleFixedGymEnv(MujocoGymEnv):
         gravity_force = -self._model.opt.gravity * total_mass
         self.wrist_force = cfrc_int[3:] - gravity_force
         obs["state"]["ur5e/wrist_force"] = self.wrist_force.astype(np.float32)
-        # print("obs_force:", obs["state"]["ur5e/wrist_force"])
+        # print(self.wrist_force)
 
         # wrist_torque = self._data.sensor("ur5e/wrist_torque").data
+        # print(self._data.sensor("ur5e/wrist_torque").data)
         dif = self._data.site_xpos[self._attatchment_id] - self._data.subtree_com[rootid]
         self.wrist_torque = cfrc_int[:3] - np.cross(dif, cfrc_int[3:])
         obs["state"]["ur5e/wrist_torque"] = self.wrist_torque.astype(np.float32)
@@ -648,7 +649,7 @@ class ur5ePegInHoleFixedGymEnv(MujocoGymEnv):
         dense_weights = self.reward_config["dense_reward_weights"]
 
         reward_components = {
-        "box_target": lambda: max(1 - distance, 0),
+        "box_target": lambda: 1 - np.tanh(1.0 * distance),
         }
 
         # Combine only the active rewards
