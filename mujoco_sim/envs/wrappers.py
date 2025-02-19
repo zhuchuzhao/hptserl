@@ -83,7 +83,8 @@ class GripperCloseEnv(gymnasium.ActionWrapper):
         super().__init__(env)
         ub = self.env.action_space
         assert ub.shape == (7,)
-        self.action_space = Box(ub.low[:6], ub.high[:6])
+        self.action_space = Box(ub.low[:6], ub.high[:6],
+            dtype=np.float32)
 
     def action(self, action: np.ndarray) -> np.ndarray:
         new_action = np.zeros((7,), dtype=np.float32)
@@ -113,7 +114,8 @@ class XYZGripperCloseEnv(gymnasium.ActionWrapper):
         super().__init__(env)
         ub = self.env.action_space
         assert ub.shape == (7,)
-        self.action_space = Box(ub.low[:3], ub.high[:3])
+        self.action_space = Box(ub.low[:3], ub.high[:3],
+            dtype=np.float32)
 
     def action(self, action: np.ndarray) -> np.ndarray:
         new_action = np.zeros((7,), dtype=np.float32)

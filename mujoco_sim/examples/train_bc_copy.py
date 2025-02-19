@@ -30,7 +30,7 @@ flags.DEFINE_integer("seed", 42, "Random seed.")
 flags.DEFINE_string("ip", "localhost", "IP address of the learner.")
 flags.DEFINE_string("bc_checkpoint_path", "/home/fmdazhar/ws/internship/mujoco_state/mujoco_sim/examples/checkpoint", "Path to save checkpoints.")
 flags.DEFINE_integer("eval_n_trajs", 5, "Number of trajectories to evaluate.")
-flags.DEFINE_integer("train_steps", 50_000, "Number of pretraining steps.")
+flags.DEFINE_integer("train_steps", 200_000, "Number of pretraining steps.")
 flags.DEFINE_bool("save_video", False, "Save video of the evaluation.")
 
 
@@ -73,8 +73,10 @@ def eval(
             actions = bc_agent.sample_actions(observations=obs, seed=key)
             actions = np.asarray(jax.device_get(actions))
             next_obs, reward, done, truncated, info = env.step(actions)
+
             obs = next_obs
             if done or truncated:
+                print("done")
                 if reward:
                     dt = time.time() - start_time
                     time_list.append(dt)
@@ -128,10 +130,10 @@ def train(
 
 
 def main(_):
-    batch_size: int = 256
+    batch_size: int = 64
     image_keys= []
     replay_buffer_capacity: int = 200000
-    encoder_type: str = "resnet"
+    encoder_type: str = "resnet-pretrained"
 
     assert batch_size % num_devices == 0
     eval_mode = FLAGS.eval_n_trajs > 0
@@ -184,7 +186,7 @@ def main(_):
             with open(path, "rb") as f:
                 transitions = pkl.load(f)
                 for transition in transitions:
-                    if np.linalg.norm(transition['actions']) > 0.0:
+                    # if np.linalg.norm(transition['actions']) > 0.0:
                         # transition["actions"] = transition["actions"][:6]
                         bc_replay_buffer.insert(transition)
         print(f"bc replay buffer size: {len(bc_replay_buffer)}")

@@ -17,9 +17,16 @@ from OpenGL.GL import *
 
 _HERE = Path(__file__).parent
 _XML_PATH = _HERE / "xmls" / "ur5e_arena1.xml"
-
 class ur5ePegInHoleFixedGymEnv(MujocoGymEnv):
     """UR5e peg-in-hole environment in Mujoco."""
+
+    metadata = {
+            "render_modes": [
+                "human",
+                "rgb_array",
+            ],
+        }
+
     def __init__(self, render_mode: Literal["rgb_array", "human"] = "rgb_array", config=None):
         # Initialize configuration
         if config is None:
@@ -73,19 +80,14 @@ class ur5ePegInHoleFixedGymEnv(MujocoGymEnv):
         self.reset_tolerance = self.config.UR5E_CONFIG["reset_tolerance"]
         self.gravity_compensation = self.config.CONTROLLER_CONFIG.get("gravity_compensation", True)
 
-
         # Reward configuration
         self.reward_config = self.config.REWARD_CONFIG
         self.sparse_reward = 0.0
         self.dense_reward = 0.0
+        self._consecutive_success = 0           # counter
+        self._success_threshold = 1           # how many consecutive steps needed
 
-        self.metadata = {
-            "render_modes": [
-                "human",
-                "rgb_array",
-            ],
-            "render_fps": int(np.round(1.0 / self.control_dt)),
-        }
+
 
         self.external_viewer = None
 
@@ -154,7 +156,7 @@ class ur5ePegInHoleFixedGymEnv(MujocoGymEnv):
         dof_ids=self._ur5e_dof_ids,
         config=self.config.CONTROLLER_CONFIG,
         )
-        obs_bound = 1e6
+        obs_bound = np.float32(1e6)
         self.observation_space = spaces.Dict(
             {
                 "state": spaces.Dict(
@@ -242,6 +244,7 @@ class ur5ePegInHoleFixedGymEnv(MujocoGymEnv):
             offscreen_height=self.render_spec.height,
             window_width=self.width,
             window_height=self.height,
+            extra_views_camera_ids = self.camera_id,
             default_cam_config=self.default_cam_config
         )
         # self._viewer.render(self.render_mode)
@@ -446,9 +449,11 @@ class ur5ePegInHoleFixedGymEnv(MujocoGymEnv):
             info: dict[str, Any]
         """
         delta_x, delta_y, delta_z, delta_qx, delta_qy, delta_qz, grasp = action
+        # print("action:",np.round(action, 5))
         # Set the position.
         pos = self._data.mocap_pos[0].copy()
         dpos = np.asarray([delta_x, delta_y, delta_z]) * self._action_scale[0]
+        # print("dpos:", np.round(dpos, 5))
         
         # Transform to OBB's local frame
         cartesian_pos = self._data.geom("cartesian_bounds").xpos
@@ -501,9 +506,18 @@ class ur5ePegInHoleFixedGymEnv(MujocoGymEnv):
         rew, task_complete = self._compute_reward()
         terminated = task_complete
         truncated = self.time_limit_exceeded()  
+
+        # If single-step success, increment the counter, otherwise reset
+        if terminated:
+            self._consecutive_success += 1
+        else:
+            self._consecutive_success = 0
+        
+        # Now decide if the *episode* is done via consecutive steps:
+        success = (self._consecutive_success >= self._success_threshold)
         # Add all render cache frames to the info dictionary
         info = {
-            "succeed": task_complete,
+            "succeed": success,
         }
         self.frames = np.concatenate(
             (
@@ -579,32 +593,16 @@ class ur5ePegInHoleFixedGymEnv(MujocoGymEnv):
         gravity_force = -self._model.opt.gravity * total_mass
         self.wrist_force = cfrc_int[3:] - gravity_force
         obs["state"]["ur5e/wrist_force"] = self.wrist_force.astype(np.float32)
-        # print(self.wrist_force)
+        # print("Computed Force:", np.round(self.wrist_force, 1))
 
-        # wrist_torque = self._data.sensor("ur5e/wrist_torque").data
-        # print(self._data.sensor("ur5e/wrist_torque").data)
+        self.wrist_torque = self._data.sensor("ur5e/wrist_torque").data
         dif = self._data.site_xpos[self._attatchment_id] - self._data.subtree_com[rootid]
-        self.wrist_torque = cfrc_int[:3] - np.cross(dif, cfrc_int[3:])
+        computed_torque = cfrc_int[:3] - np.cross(dif, cfrc_int[3:])
+        # print("Computed Torque:", np.round(computed_torque, 1))
         obs["state"]["ur5e/wrist_torque"] = self.wrist_torque.astype(np.float32)
 
-        if self.render_mode == "human":
-            self._viewer.render(self.render_mode)
-            rgb_arr_1 = self._viewer.viewer.rgb_1
-            rgb_arr_2 = self._viewer.viewer.rgb_2
-            rgb_arr_3 = self._viewer.viewer.rgb_3
-            rgb_arr_4 = self._viewer.viewer.rgb_4
-            rgb_img_1 = rgb_arr_1.reshape(self._viewer.viewer.offscreen_height, self._viewer.viewer.offscreen_width, 3)
-            rgb_img_2 = rgb_arr_2.reshape(self._viewer.viewer.offscreen_height, self._viewer.viewer.offscreen_width, 3)
-            rgb_img_3 = rgb_arr_3.reshape(self._viewer.viewer.offscreen_height, self._viewer.viewer.offscreen_width, 3)
-            rgb_img_4 = rgb_arr_4.reshape(self._viewer.viewer.offscreen_height, self._viewer.viewer.offscreen_width, 3)
-            self._render_cache = {}
-            self._render_cache["front"] = rgb_img_1[::-1, :, :]
-            self._render_cache["top"] = rgb_img_2[::-1, :, :]
-            self._render_cache["wrist"] = rgb_img_3[::-1, :, :]
-            self._render_cache["wrist2"] = rgb_img_4[::-1, :, :]
-
-        else:
-            self._render_cache["front"], self._render_cache["top"], self._render_cache["wrist"], self._render_cache["wrist2"] = self.render()
+        # Render the images in the cache
+        self._render_cache["front"], self._render_cache["top"], self._render_cache["wrist"], self._render_cache["wrist2"] = self.render()
 
         if self.image_obs:
             obs["images"] = {}
@@ -622,6 +620,9 @@ class ur5ePegInHoleFixedGymEnv(MujocoGymEnv):
             mujoco.mju_quat2Vel(port_ori_euler, port_ori_quat, 1.0)
             obs["state"]["port_pose"] = np.concatenate((port_pos, port_ori_euler)).astype(np.float32)
 
+        if self.render_mode == "human":
+            self._viewer.render(self.render_mode)
+
         return obs
 
     def _compute_reward(self) -> float:
@@ -634,7 +635,7 @@ class ur5ePegInHoleFixedGymEnv(MujocoGymEnv):
         port_bottom_quat = sensor_data("port_bottom_quat").data
         distance = np.linalg.norm(connector_bottom_pos - port_bottom_pos)
         z_distance = abs(connector_bottom_pos[2] - port_bottom_pos[2])
- 
+
         # Orientation Control
         mujoco.mju_negQuat(self.quat_conj, connector_head_ori)
         mujoco.mju_mulQuat(self.quat_err, port_bottom_quat, self.quat_conj)
@@ -649,7 +650,7 @@ class ur5ePegInHoleFixedGymEnv(MujocoGymEnv):
         dense_weights = self.reward_config["dense_reward_weights"]
 
         reward_components = {
-        "box_target": lambda: 1 - np.tanh(1.0 * distance),
+        "box_target": lambda: 1 - np.tanh(20.0 * distance),
         }
 
         # Combine only the active rewards
@@ -662,10 +663,10 @@ class ur5ePegInHoleFixedGymEnv(MujocoGymEnv):
         if not self.reward_config["reward_shaping"]:
             return self.sparse_reward, task_complete
             
-        return self.dense_reward, task_complete
+        return self.dense_reward, task_complete_z
 
 if __name__ == "__main__":
-    env = ur5ePegInHoleGymEnv()
+    env = ur5ePegInHoleFixedGymEnv()
     env.reset()
     for i in range(1000):
         env.step(np.random.uniform(-1, 1, 7))

@@ -1,11 +1,12 @@
 import os
 import time
-from typing import Dict, Optional
+from typing import Dict, Optional, List
 
 import glfw
 import imageio
 import mujoco
 import numpy as np
+
 
 def _import_egl(width, height):
     from mujoco.egl import GLContext
@@ -299,6 +300,7 @@ class WindowViewer(BaseRender):
         height: Optional[int] = None,
         offscreen_width: int = 640,
         offscreen_height: int = 480,
+        extra_views_camera_ids: Optional[List[int]] = None,
         max_geom: int = 1000,
         visual_options: Dict[int, bool] = {},
     ):
@@ -321,12 +323,7 @@ class WindowViewer(BaseRender):
         self._hide_menu = False
         self.offscreen_width = offscreen_width
         self.offscreen_height = offscreen_height
-
-        self.rgb_1 = np.zeros((self.offscreen_width * self.offscreen_height * 3, 1), dtype=np.uint8)
-        self.rgb_2 = np.zeros((self.offscreen_width * self.offscreen_height * 3, 1), dtype=np.uint8)
-        self.rgb_3 = np.zeros((self.offscreen_width * self.offscreen_height * 3, 1), dtype=np.uint8)
-        self.rgb_4 = np.zeros((self.offscreen_width * self.offscreen_height * 3, 1), dtype=np.uint8)
-
+        self._render_extra_views = extra_views_camera_ids
 
         monitor_width, monitor_height = glfw.get_video_mode(
             glfw.get_primary_monitor()
@@ -417,98 +414,25 @@ class WindowViewer(BaseRender):
             # render
             mujoco.mjr_render(self.viewport, self.scn, self.con)
 
-            top_right_x = self.viewport.width - self.offscreen_width
+            # Only create extra camera views when visualization is enabled
+            if self._render_extra_views:
+                top_right_x = self.viewport.width - self.offscreen_width
+                for i, cam_id in enumerate(self._render_extra_views):
+                    offscreen_viewport = mujoco.MjrRect(
+                        int(top_right_x), int(i * self.offscreen_height),
+                        int(self.offscreen_width), int(self.offscreen_height)
+                    )
 
-            # Calculate inset rectangles for four viewports stacked vertically
-            bottom_right_y_1 = 0  # First viewport at the bottom
-            bottom_right_y_2 = self.offscreen_height  # Second viewport above the first
-            bottom_right_y_3 = 2 * self.offscreen_height  # Third viewport above the second
-            bottom_right_y_4 = 3 * self.offscreen_height  # Fourth viewport above the third
+                    offscreen_cam = mujoco.MjvCamera()
+                    offscreen_cam.type = mujoco.mjtCamera.mjCAMERA_FIXED
+                    offscreen_cam.fixedcamid = cam_id
 
-            offscreen_viewport_1 = mujoco.MjrRect(
-                int(top_right_x), int(bottom_right_y_1), int(self.offscreen_width), int(self.offscreen_height)
-            )
-            offscreen_viewport_2 = mujoco.MjrRect(
-                int(top_right_x), int(bottom_right_y_2), int(self.offscreen_width), int(self.offscreen_height)
-            )
-            offscreen_viewport_3 = mujoco.MjrRect(
-                int(top_right_x), int(bottom_right_y_3), int(self.offscreen_width), int(self.offscreen_height)
-            )
-            offscreen_viewport_4 = mujoco.MjrRect(
-                int(top_right_x), int(bottom_right_y_4), int(self.offscreen_width), int(self.offscreen_height)
-            )
+                    mujoco.mjv_updateScene(
+                        self.model, self.data, self.vopt, self.pert,
+                        offscreen_cam, mujoco.mjtCatBit.mjCAT_ALL.value, self.scn
+                    )
 
-            # Set the camera to the specified view
-            offscreen_cam_1 = mujoco.MjvCamera()
-            offscreen_cam_1.type = mujoco.mjtCamera.mjCAMERA_FIXED
-            offscreen_cam_1.fixedcamid = 0
-
-            offscreen_cam_2 = mujoco.MjvCamera()
-            offscreen_cam_2.type = mujoco.mjtCamera.mjCAMERA_FIXED
-            offscreen_cam_2.fixedcamid = 1
-
-            offscreen_cam_3 = mujoco.MjvCamera()
-            offscreen_cam_3.type = mujoco.mjtCamera.mjCAMERA_FIXED
-            offscreen_cam_3.fixedcamid = 4
-
-            offscreen_cam_4 = mujoco.MjvCamera()
-            offscreen_cam_4.type = mujoco.mjtCamera.mjCAMERA_FIXED
-            offscreen_cam_4.fixedcamid = 5
-
-            # Update scene
-            mujoco.mjv_updateScene(
-                self.model,
-                self.data,
-                self.vopt,
-                self.pert,
-                offscreen_cam_1,
-                mujoco.mjtCatBit.mjCAT_ALL.value,
-                self.scn
-            )
-
-            mujoco.mjr_render(offscreen_viewport_1, self.scn, self.con)
-            mujoco.mjr_readPixels(self.rgb_1, None, offscreen_viewport_1, self.con)
-            mujoco.mjr_drawPixels(self.rgb_1, None, offscreen_viewport_1, self.con)
-
-
-            mujoco.mjv_updateScene(
-                self.model,
-                self.data,
-                self.vopt,
-                self.pert,
-                offscreen_cam_2,
-                mujoco.mjtCatBit.mjCAT_ALL.value,
-                self.scn
-            )
-            mujoco.mjr_render(offscreen_viewport_2, self.scn, self.con)
-            mujoco.mjr_readPixels(self.rgb_2, None, offscreen_viewport_2, self.con)
-            mujoco.mjr_drawPixels(self.rgb_2, None, offscreen_viewport_2, self.con)
-
-            mujoco.mjv_updateScene(
-                self.model,
-                self.data,
-                self.vopt,
-                self.pert,
-                offscreen_cam_3,
-                mujoco.mjtCatBit.mjCAT_ALL.value,
-                self.scn
-            )
-            mujoco.mjr_render(offscreen_viewport_3, self.scn, self.con)
-            mujoco.mjr_readPixels(self.rgb_3, None, offscreen_viewport_3, self.con)
-            mujoco.mjr_drawPixels(self.rgb_3, None, offscreen_viewport_3, self.con)
-
-            mujoco.mjv_updateScene(
-                self.model,
-                self.data,
-                self.vopt,
-                self.pert,
-                offscreen_cam_4,
-                mujoco.mjtCatBit.mjCAT_ALL.value,
-                self.scn
-            )
-            mujoco.mjr_render(offscreen_viewport_4, self.scn, self.con)
-            mujoco.mjr_readPixels(self.rgb_4, None, offscreen_viewport_4, self.con)
-            mujoco.mjr_drawPixels(self.rgb_4, None, offscreen_viewport_4, self.con)
+                    mujoco.mjr_render(offscreen_viewport, self.scn, self.con)
 
             # overlay items
             if not self._hide_menu:
@@ -765,6 +689,7 @@ class MujocoRenderer:
         default_cam_config: Optional[dict] = None,
         max_geom: int = 1000,
         camera_id: Optional[int] = None,
+        extra_views_camera_ids: Optional[List[int]] = None,
         camera_name: Optional[str] = None,
         visual_options: Dict[int, bool] = {},
     ):
@@ -786,6 +711,7 @@ class MujocoRenderer:
         self.offscreen_height = offscreen_height
         self.window_width = window_width
         self.window_height = window_height
+        self.extra_views_camera_ids = extra_views_camera_ids
         self._viewers = {}
         self.viewer = None
         self.default_cam_config = default_cam_config
@@ -847,6 +773,7 @@ class MujocoRenderer:
                     self.window_height,
                     self.offscreen_width,
                     self.offscreen_height,
+                    self.extra_views_camera_ids,
                     self.max_geom,
                     self._vopt,
                 )

@@ -376,7 +376,7 @@ def euler2mat(euler):
     cc, cs = ci * ck, ci * sk
     sc, ss = si * ck, si * sk
 
-    mat = np.empty(euler.shape[:-1] + (3, 3), dtype=np.float64)
+    mat = np.empty(euler.shape[:-1] + (3, 3), dtype=np.float32)
     mat[..., 2, 2] = cj * ck
     mat[..., 2, 1] = sj * sc - cs
     mat[..., 2, 0] = sj * cc + ss

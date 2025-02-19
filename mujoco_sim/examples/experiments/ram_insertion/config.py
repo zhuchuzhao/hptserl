@@ -2,21 +2,48 @@ import os
 import jax
 import jax.numpy as jnp
 import numpy as np
+from mujoco_sim.algo.networks.reward_classifier import load_classifier_func
+import mujoco_sim
+import gymnasium
 
-from franka_env.envs.wrappers import (
-    Quat2EulerWrapper,
-    SpacemouseIntervention,
-    MultiCameraBinaryRewardClassifierWrapper,
-    GripperCloseEnv
-)
-from franka_env.envs.relative_env import RelativeFrame
-from franka_env.envs.franka_env import DefaultEnvConfig
-from algo.wrappers.serl_obs_wrappers import SERLObsWrapper
-from algo.wrappers.chunking import ChunkingWrapper
-from algo.networks.reward_classifier import load_classifier_func
-
+from gymnasium.wrappers import RecordEpisodeStatistics 
 from experiments.config import DefaultTrainingConfig
-from experiments.ram_insertion.wrapper import RAMEnv
+from typing import Dict
+
+class DefaultEnvConfig:
+    """Default configuration for FrankaEnv. Fill in the values below."""
+
+    SERVER_URL: str = "http://127.0.0.1:5000/"
+    REALSENSE_CAMERAS: Dict = {
+        "wrist_1": "130322274175",
+        "wrist_2": "127122270572",
+    }
+    IMAGE_CROP: dict[str, callable] = {}
+    TARGET_POSE: np.ndarray = np.zeros((6,))
+    GRASP_POSE: np.ndarray = np.zeros((6,))
+    REWARD_THRESHOLD: np.ndarray = np.zeros((6,))
+    ACTION_SCALE = np.zeros((3,))
+    RESET_POSE = np.zeros((6,))
+    RANDOM_RESET = False
+    RANDOM_XY_RANGE = (0.0,)
+    RANDOM_RZ_RANGE = (0.0,)
+    ABS_POSE_LIMIT_HIGH = np.zeros((6,))
+    ABS_POSE_LIMIT_LOW = np.zeros((6,))
+    COMPLIANCE_PARAM: Dict[str, float] = {}
+    RESET_PARAM: Dict[str, float] = {}
+    PRECISION_PARAM: Dict[str, float] = {}
+    LOAD_PARAM: Dict[str, float] = {
+        "mass": 0.0,
+        "F_x_center_load": [0.0, 0.0, 0.0],
+        "load_inertia": [0, 0, 0, 0, 0, 0, 0, 0, 0]
+    }
+    DISPLAY_IMAGE: bool = True
+    GRIPPER_SLEEP: float = 0.6
+    MAX_EPISODE_LENGTH: int = 100
+    JOINT_RESET_PERIOD: int = 0
+
+
+##############################################################################
 
 class EnvConfig(DefaultEnvConfig):
     SERVER_URL = "http://127.0.0.2:5000/"
@@ -90,9 +117,14 @@ class EnvConfig(DefaultEnvConfig):
 
 
 class TrainConfig(DefaultTrainingConfig):
-    image_keys = ["wrist_1", "wrist_2"]
-    classifier_keys = ["wrist_1", "wrist_2"]
-    proprio_keys = ["tcp_pose", "tcp_vel", "tcp_force", "tcp_torque", "gripper_pose"]
+    image_keys = []
+    classifier_keys = []
+    proprio_keys = ["controller_pose",
+                    "ur5e/tcp_pose",
+                    "ur5e/tcp_vel",
+                    "ur5e/wrist_force",
+                    "ur5e/wrist_torque",
+                    "connector_pose",]
     buffer_period = 1000
     checkpoint_period = 5000
     steps_per_update = 50
@@ -100,30 +132,34 @@ class TrainConfig(DefaultTrainingConfig):
     setup_mode = "single-arm-fixed-gripper"
 
     def get_environment(self, fake_env=False, save_video=False, classifier=False):
-        env = RAMEnv(
-            fake_env=fake_env,
-            save_video=save_video,
-            config=EnvConfig(),
-        )
-        env = GripperCloseEnv(env)
-        if not fake_env:
-            env = SpacemouseIntervention(env)
-        env = RelativeFrame(env)
-        env = Quat2EulerWrapper(env)
-        env = SERLObsWrapper(env, proprio_keys=self.proprio_keys)
-        env = ChunkingWrapper(env, obs_horizon=1, act_exec_horizon=None)
-        if classifier:
-            classifier = load_classifier_func(
-                key=jax.random.PRNGKey(0),
-                sample=env.observation_space.sample(),
-                image_keys=self.classifier_keys,
-                checkpoint_path=os.path.abspath("classifier_ckpt/"),
-            )
+        # Set render_mode conditionally
+        render_mode = "human"
+        env = gymnasium.make("ur5ePegInHoleFixedGymEnv_state-v0", render_mode=render_mode)
+        env = RecordEpisodeStatistics(env)
+        # env = RAMEnv(
+        #     fake_env=fake_env,
+        #     save_video=save_video,
+        #     config=EnvConfig(),
+        # )
+        # env = GripperCloseEnv(env)
+        # if not fake_env:
+        #     env = SpacemouseIntervention(env)
+        # env = RelativeFrame(env)
+        # env = Quat2EulerWrapper(env)
+        # env = SERLObsWrapper(env, proprio_keys=self.proprio_keys)
+        # env = ChunkingWrapper(env, obs_horizon=1, act_exec_horizon=None)
+        # if classifier:
+        #     classifier = load_classifier_func(
+        #         key=jax.random.PRNGKey(0),
+        #         sample=env.observation_space.sample(),
+        #         image_keys=self.classifier_keys,
+        #         checkpoint_path=os.path.abspath("classifier_ckpt/"),
+        #     )
 
-            def reward_func(obs):
-                sigmoid = lambda x: 1 / (1 + jnp.exp(-x))
-                # added check for z position to further robustify classifier, but should work without as well
-                return int(sigmoid(classifier(obs)) > 0.85 and obs['state'][0, 6] > 0.04)
+        #     def reward_func(obs):
+        #         sigmoid = lambda x: 1 / (1 + jnp.exp(-x))
+        #         # added check for z position to further robustify classifier, but should work without as well
+        #         return int(sigmoid(classifier(obs)) > 0.85 and obs['state'][0, 6] > 0.04)
 
-            env = MultiCameraBinaryRewardClassifierWrapper(env, reward_func)
+        #     env = MultiCameraBinaryRewardClassifierWrapper(env, reward_func)
         return env

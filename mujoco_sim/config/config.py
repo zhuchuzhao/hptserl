@@ -7,10 +7,10 @@ class PegEnvConfig():
     def __init__(self, **kwargs):
         # General Environment Configuration
         self.ENV_CONFIG = {
-            "action_scale": np.array([0.0001,0.0001, 0.0001]),  # Scaling factors for position, orientation, and gripper control
+            "action_scale": np.array([1, 1, 1]),  # Scaling factors for position, orientation, and gripper control
             "control_dt": 0.02,  # Time step for controller updates
             "physics_dt": 0.002,  # Time step for physics simulation
-            "time_limit": 25.0,  # Time limit for each episode
+            "time_limit": 20.0,  # Time limit for each episode
             "seed": 0,  # Random seed
             "image_obs": False,  # Use image observations
         }
@@ -84,7 +84,7 @@ class PegEnvConfig():
                 "box_target": 1.0,  # Weight for reaching target position
             },
             "sparse_reward_weights": 1,  # Reward for completing the task
-            "task_complete_tolerance": 0.0025,  # Distance threshold for task completion
+            "task_complete_tolerance": 0.003,  # Distance threshold for task completion
         }
 
         # Update configurations with provided keyword arguments

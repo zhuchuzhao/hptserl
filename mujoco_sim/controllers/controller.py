@@ -139,8 +139,8 @@ class Controller:
         dq = self.data.qvel[self.dof_ids]
 
         mujoco.mj_jacSite(self.model, self.data, self.J_v, self.J_w, self.site_id)
-        J_v = self.J_v[:, self.dof_ids]
-        J_w = self.J_w[:, self.dof_ids]
+        J_v = self.J_v[:, self.dof_ids].astype(np.float32)
+        J_w = self.J_w[:, self.dof_ids].astype(np.float32)
         J = np.concatenate([J_v, J_w], axis=0)
 
         # Position Control
@@ -200,7 +200,7 @@ class Controller:
         # print("Wrist Torque: ", wrist_torque)
         # direction_vector = np.array([0, 0, 1, 0, 0, 0])
         # print("Error: ", self.error)
-        # compensation = 0.08 * np.array(wrist_force, dtype=np.float64)* direction_vector[:3]
+        # compensation = 0.08 * np.array(wrist_force, dtype=np.float32)* direction_vector[:3]
         # print("Compensation: ", compensation)
         # self.error[:3] -= compensation
         # print("Error_after: ", self.error)
@@ -209,7 +209,7 @@ class Controller:
         if self.method == "dynamics":
             if self.inertia_compensation:
                 mujoco.mj_fullM(self.model, self.M, self.data.qM)
-                M = self.M[self.dof_ids, :][:, self.dof_ids]
+                M = self.M[self.dof_ids, :][:, self.dof_ids].astype(np.float32)
                 M_inv = np.linalg.inv(M)
                 ddq = M_inv @ J.T @ self.error
             else:

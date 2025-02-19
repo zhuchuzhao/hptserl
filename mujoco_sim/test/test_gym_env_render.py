@@ -31,8 +31,8 @@ while True:
     a = sample()
     obs, rew, done, truncated, info = env.step(a)
 
-    if done or truncated:
-        obs, info = env.reset()
+    # if done or truncated:
+    #     obs, info = env.reset()
 
 # Properly close the environment
 env.close()

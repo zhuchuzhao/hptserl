@@ -76,6 +76,8 @@ class ur5ePegInHoleGymEnv(MujocoGymEnv):
         self.reward_config = config.REWARD_CONFIG
         self.sparse_reward = 0.0
         self.dense_reward = 0.0
+        self._consecutive_success = 0           # counter
+        self._success_threshold = 5            # how many consecutive steps needed
 
         self.metadata = {
             "render_modes": [
@@ -234,6 +236,7 @@ class ur5ePegInHoleGymEnv(MujocoGymEnv):
             offscreen_height=self.render_spec.height,
             window_width=self.width,
             window_height=self.height,
+            extra_views_camera_ids = [0, 1, 4, 5],
             default_cam_config=self.default_cam_config
         )
         self._viewer.render(self.render_mode)
@@ -573,15 +576,15 @@ class ur5ePegInHoleGymEnv(MujocoGymEnv):
 
         if self.image_obs:
             obs["images"] = {}
-            if self.render_mode == "human":
-                rgb_arr_1 = self._viewer.viewer.rgb_1
-                rgb_arr_2 = self._viewer.viewer.rgb_2
-                rgb_img_1 = rgb_arr_1.reshape(self._viewer.viewer.offscreen_height, self._viewer.viewer.offscreen_width, 3)
-                rgb_img_2 = rgb_arr_2.reshape(self._viewer.viewer.offscreen_height, self._viewer.viewer.offscreen_width, 3)
-                obs["images"]["front"] = rgb_img_1[::-1, :, :]
-                obs["images"]["wrist"] = rgb_img_2[::-1, :, :]
-            else:
-                obs["images"]["front"], obs["images"]["wrist"] = self.render()
+            # if self.render_mode == "human":
+            #     rgb_arr_1 = self._viewer.viewer.rgb_1
+            #     rgb_arr_2 = self._viewer.viewer.rgb_2
+            #     rgb_img_1 = rgb_arr_1.reshape(self._viewer.viewer.offscreen_height, self._viewer.viewer.offscreen_width, 3)
+            #     rgb_img_2 = rgb_arr_2.reshape(self._viewer.viewer.offscreen_height, self._viewer.viewer.offscreen_width, 3)
+            #     obs["images"]["front"] = rgb_img_1[::-1, :, :]
+            #     obs["images"]["wrist"] = rgb_img_2[::-1, :, :]
+            # else:
+            obs["images"]["front"], obs["images"]["wrist"] = self.render()
         else:
             connector_pos = self._data.sensor("connector_head_pos").data.astype(np.float32)
             connector_ori_quat = self._data.sensor("connector_head_quat").data.astype(np.float32)
@@ -620,7 +623,12 @@ class ur5ePegInHoleGymEnv(MujocoGymEnv):
         # Task completion
         task_complete = distance < self.reward_config["task_complete_tolerance"]
         task_complete_z = z_distance < self.reward_config["task_complete_tolerance"]
-   
+
+        # Compute z distance for sparse reward
+        self.sparse_reward = self.reward_config["sparse_reward_weights"] if task_complete_z else 0.0
+        if not self.reward_config["reward_shaping"]:
+            return self.sparse_reward, task_complete
+        
         # Dense rewards with shaping
         dense_weights = self.reward_config["dense_reward_weights"]
 
@@ -633,11 +641,7 @@ class ur5ePegInHoleGymEnv(MujocoGymEnv):
             dense_weights[component] * reward_components[component]()
             for component in dense_weights if component in reward_components
         )
-        # Compute z distance for sparse reward
-        self.sparse_reward = self.reward_config["sparse_reward_weights"] if task_complete_z else 0.0
-        if not self.reward_config["reward_shaping"]:
-            return self.sparse_reward, task_complete
-            
+ 
         return self.dense_reward, task_complete
 
 if __name__ == "__main__":

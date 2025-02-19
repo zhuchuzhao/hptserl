@@ -35,7 +35,7 @@
                 <geom solimp="0.9 0.95 0.001 0.5 2" solref="0.02 1" condim="6" pos="-0.018840000152587896 -0.02743499946594238 0.0015" type="box" material="port_mat" size="0.0029300003051757812 0.018795000076293946 0.0015" />
                 <geom solimp="0.9 0.95 0.001 0.5 2" solref="0.02 1" condim="6" pos="-0.007955 -0.031229999542236323 0.0015" type="box" material="port_mat" size="0.007954999847412112 0.015 0.0015" />
 
-                <site name="port_bottom" type="sphere" pos="-0.008 0 0.017" quat="0.7071 0 0 0.7071" size="0.001 0.001 0.001" rgba="1 0 0 1"/>
+                <site name="port_bottom" type="sphere" pos="-0.008 0 0.0192" quat="0.7071 0 0 0.7071" size="0.001 0.001 0.001" rgba="1 0 0 1"/>
                 <site name="port_centre" type="sphere" pos="-0.008 0 0.009600000381469725" quat="0.7071 0 0 0.7071" size="0.001 0.001 0.001" rgba="1 0 0 1"/>
                 <site name="port_top" type="sphere" pos="-0.008 0 0.0" quat="0.7071 0 0 0.7071" size="0.001 0.001 0.001" rgba="0.8 0.4 0.4 1"/>
             </body>

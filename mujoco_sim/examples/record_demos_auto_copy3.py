@@ -18,6 +18,7 @@ flags.DEFINE_string("exp_name", None, "Name of experiment corresponding to folde
 flags.DEFINE_integer("successes_needed", 200, "Number of successful demos to collect.")
 flags.DEFINE_boolean("save_video", True, "Flag to save videos of successful demos.")
 flags.DEFINE_boolean("save_model", True, "Flag to save model & data.")
+flags.DEFINE_float("noise_std", 0.0005, "Standard deviation for noise to add to offsets.")
 
 ################################################################################
 # Helper Functions
@@ -91,7 +92,6 @@ def step_through_waypoints(env, unwrapped_env,
         prev_pos = desired_pos
         prev_quat = desired_quat
 
-        time.sleep(unwrapped_env.control_dt)
 
         if done or truncated:
             # Episode ended prematurely
@@ -224,7 +224,6 @@ def descend_with_force_feedback(env, unwrapped_env,
             current_pos = desired_pos
             current_quat = desired_quat
 
-            time.sleep(unwrapped_env.control_dt)
 
             if done or truncated:
                 return obs, info.get("succeed", False)
@@ -235,14 +234,39 @@ def descend_with_force_feedback(env, unwrapped_env,
             if z_force < z_force_threshold:
                 accumulated_time += force_check_interval
                 if accumulated_time >= force_check_duration:
+                    # --- TAKE A SMALL REST ---
+                    for _ in range(30):
+                        # Zero action → no movement
+                        r_obs, r_rew, r_done, r_truncated, r_info = env.step(np.zeros(3))
+                        
+                        # It's good practice to log transitions during rest
+                        rest_transition = copy.deepcopy(
+                            dict(
+                                observations=obs,
+                                actions=np.zeros(3),
+                                next_observations=r_obs,
+                                rewards=r_rew,
+                                masks=1.0 - r_done,
+                                dones=r_done,
+                                infos=r_info,
+                            )
+                        )
+                        trajectory.append(rest_transition)
+                        obs = r_obs
+                        frames.append(unwrapped_env.frames)
+
+                        if r_done or r_truncated:
+                            return obs, r_info.get("succeed", False)
                     # Retreat upward by 'retreat_distance'
                     retreat_pos = d.mocap_pos[0].copy()
                     conn_pos = d.site_xpos[unwrapped_env._pinch_site_id]
                     error = conn_pos[2] - retreat_pos[2]
 
-                    retreat_distance = np.random.uniform(0.007, 0.01)  # Example range: 5 cm to 10 cm
+                    retreat_distance = np.random.uniform(0.005, 0.007)  # Example range: 5 cm to 10 cm
                     retreat_pos[2] += retreat_distance
                     retreat_pos[2] += error
+                    retreat_pos[2] += np.random.normal(0, FLAGS.noise_std)  # add Gaussian noise
+
                     # Step through retreat
                     ret_waypoints, ret_quat = compute_waypoints(
                         pos_start=d.mocap_pos[0].copy(),
@@ -270,6 +294,8 @@ def descend_with_force_feedback(env, unwrapped_env,
                     _retreat_pos = d.mocap_pos[0].copy()
                     original_offset = port_pos[0] - _retreat_pos[0]  # Assuming port_pos has at least 2 elements
                     offset_x = np.random.uniform(0, abs(original_offset)) * np.sign(original_offset)
+                    noise_x = np.random.normal(0, FLAGS.noise_std)
+                    offset_x += abs(noise_x) * np.sign(original_offset)
                     _retreat_pos[0] += offset_x
 
                     # Step through re-offset
@@ -298,6 +324,8 @@ def descend_with_force_feedback(env, unwrapped_env,
                     _retreat_pos = d.mocap_pos[0].copy()
                     original_offset = port_pos[1] - _retreat_pos[1]  # Assuming port_pos has at least 2 elements
                     offset_y = np.random.uniform(0, abs(original_offset)) * np.sign(original_offset)
+                    noise_y = np.random.normal(0, FLAGS.noise_std)
+                    offset_y += abs(noise_y) * np.sign(original_offset)
                     _retreat_pos[1] += offset_y
 
                     # Step through re-offset
@@ -367,6 +395,7 @@ def run_demo(env, unwrapped_env, obs, trajectory, frames):
     original_offset_z = hover_pos[2] - port_top_pos[2] - 0.05
     # Restrict offset direction to follow the original offset direction
     offset_z = np.random.uniform(0, abs(original_offset_z)) * np.sign(original_offset_z)
+    offset_z += np.random.normal(0, FLAGS.noise_std)  # add Gaussian noise
     hover_pos[2] -= offset_z
 
     # Waypoints to hover pose
@@ -400,6 +429,7 @@ def run_demo(env, unwrapped_env, obs, trajectory, frames):
     original_offset_x = hover_pos[0] - port_bottom_pos[0]
     upper_offset = abs(original_offset_x) * np.sign(original_offset_x)
     offset_x = np.random.uniform(upper_offset/2, upper_offset)
+    offset_x += np.random.normal(0, FLAGS.noise_std)  # add Gaussian noise
     hover_pos[0] -= offset_x
 
     # Waypoints to hover pose
@@ -433,6 +463,8 @@ def run_demo(env, unwrapped_env, obs, trajectory, frames):
     original_offset_y = hover_pos[1] - port_bottom_pos[1]
     upper_offset = abs(original_offset_y) * np.sign(original_offset_y)
     offset_y = np.random.uniform(upper_offset/2, upper_offset)
+    offset_y += np.random.normal(0, FLAGS.noise_std)  # add Gaussian noise
+
     hover_pos[1] -= offset_y
 
     # Waypoints to hover pose
@@ -481,8 +513,8 @@ def run_demo(env, unwrapped_env, obs, trajectory, frames):
 
 
 def main(_):
-    # env = gymnasium.make("ur5ePegInHoleFixedGymEnv_state-v0", render_mode="human")
-    env = gymnasium.make("ur5ePegInHoleFixedGymEnv_state-v0")
+    env = gymnasium.make("ur5ePegInHoleFixedGymEnv_state-v0", render_mode="human")
+    # env = gymnasium.make("ur5ePegInHoleFixedGymEnv_state-v0")
 
     unwrapped_env = env.unwrapped
     action_spec = env.action_space
