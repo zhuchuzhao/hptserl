@@ -14,7 +14,7 @@ import imageio
 FLAGS = flags.FLAGS
 flags.DEFINE_string("exp_name", None, "Name of experiment corresponding to folder.")
 flags.DEFINE_integer("successes_needed", 1, "Number of successful demos to collect.")
-flags.DEFINE_boolean("save_video", False, "Flag to save videos of successful demos.")
+flags.DEFINE_boolean("save_video", True, "Flag to save videos of successful demos.")
 
 def main(_):
 

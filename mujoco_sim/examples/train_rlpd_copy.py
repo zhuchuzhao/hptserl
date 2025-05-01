@@ -36,13 +36,12 @@ from mujoco_sim.algo.data.data_store import MemoryEfficientReplayBufferDataStore
 from experiments.mappings import CONFIG_MAPPING
 
 FLAGS = flags.FLAGS
-
 flags.DEFINE_string("exp_name", "ram_insertion", "Name of experiment corresponding to folder.")
 flags.DEFINE_integer("seed", 42, "Random seed.")
 flags.DEFINE_boolean("learner", False, "Whether this is a learner.")
 flags.DEFINE_boolean("actor", False, "Whether this is an actor.")
 flags.DEFINE_string("ip", "localhost", "IP address of the learner.")
-flags.DEFINE_multi_string("demo_path", "/home/fmdazhar/ws/internship/mujoco_state/mujoco_sim/examples/demo_data/converted_demo.pkl", "Path to the demo data.")
+flags.DEFINE_multi_string("demo_path", "D:/ZCZTHU/thu-zcz-4.1/bishe/code/serl/mujoco_vision/mujoco_sim/examples/converted/converted_demo.pkl" , "Path to the demo data.")
 flags.DEFINE_string("checkpoint_path", None, "Path to save checkpoints.")
 flags.DEFINE_integer("eval_checkpoint_step", 0, "Step to evaluate the checkpoint.")
 flags.DEFINE_integer("eval_n_trajs", 0, "Number of trajectories to evaluate.")
@@ -215,7 +214,7 @@ def actor(agent, data_store, intvn_data_store, env, sampling_rng):
                 already_intervened = False
                 client.update()
                 obs, _ = env.reset()
-
+        print("step", step)
         if step > 0 and config.buffer_period > 0 and step % config.buffer_period == 0:
             # dump to pickle file
             buffer_path = os.path.join(FLAGS.checkpoint_path, "buffer")
@@ -268,7 +267,7 @@ def learner(rng, agent, replay_buffer, demo_buffer, wandb_logger=None):
     server.register_data_store("actor_env_intvn", demo_buffer)
     server.start(threaded=True)
 
-    # Loop to wait until replay_buffer is filled
+    # Loop  to wait until replay_buffer is filled
     pbar = tqdm.tqdm(
         total=config.training_starts,
         initial=len(replay_buffer),
@@ -378,6 +377,7 @@ def main(_):
     rng, sampling_rng = jax.random.split(rng)
     
     if config.setup_mode == 'single-arm-fixed-gripper' or config.setup_mode == 'dual-arm-fixed-gripper':   
+        print("yes！！！！！！！")
         agent: SACAgent = make_sac_pixel_agent(
             seed=FLAGS.seed,
             sample_obs=env.observation_space.sample(),
@@ -413,7 +413,7 @@ def main(_):
     # replicate agent across devices
     # need the jnp.array to avoid a bug where device_put doesn't recognize primitives
     agent = jax.device_put(
-        jax.tree_map(jnp.array, agent), sharding.replicate()
+        jax.tree_util.tree_map(jnp.array, agent), sharding.replicate()
     )
 
     if FLAGS.checkpoint_path is not None and os.path.exists(FLAGS.checkpoint_path):

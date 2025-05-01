@@ -6,15 +6,15 @@ class DefaultTrainingConfig:
 
     agent: str = "drq"
     max_traj_length: int = 100
-    batch_size: int = 256
+    batch_size: int = 64
     cta_ratio: int = 2
     discount: float = 0.97
 
-    max_steps: int = 1000000
-    replay_buffer_capacity: int = 200000
+    max_steps: int = 10000
+    replay_buffer_capacity: int = 2000
 
-    random_steps: int = 0
-    training_starts: int = 100
+    random_steps: int = 100
+    training_starts: int = 64
     steps_per_update: int = 50
 
     log_period: int = 10
@@ -23,7 +23,7 @@ class DefaultTrainingConfig:
     # "resnet" for ResNet10 from scratch and "resnet-pretrained" for frozen ResNet10 with pretrained weights
     encoder_type: str = "resnet-pretrained"
     demo_path: str = None
-    checkpoint_period: int = 0
+    checkpoint_period: int = 100
     buffer_period: int = 0
 
     eval_checkpoint_step: int = 0
