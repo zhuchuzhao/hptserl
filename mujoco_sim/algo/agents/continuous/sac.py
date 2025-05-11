@@ -17,6 +17,7 @@ from mujoco_sim.algo.networks.lagrange import GeqLagrangeMultiplier
 from mujoco_sim.algo.networks.mlp import MLP
 from mujoco_sim.algo.utils.train_utils import _unpack
 
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union  
 
 class SACAgent(flax.struct.PyTreeNode):
     """
@@ -432,52 +433,52 @@ class SACAgent(flax.struct.PyTreeNode):
                 **kwargs,
             ),
         )
-
-    @classmethod
-    def create_pixels(
-        cls,
-        rng: PRNGKey,
-        observations: Data,
-        actions: jnp.ndarray,
-        # Model architecture
-        encoder_type: str = "resnet-pretrained",
-        use_proprio: bool = False,
-        critic_network_kwargs: dict = {
-            "hidden_dims": [256, 256],
-        },
-        policy_network_kwargs: dict = {
-            "hidden_dims": [256, 256],
-        },
-        policy_kwargs: dict = {
-            "tanh_squash_distribution": True,
-            "std_parameterization": "uniform",
-        },
-        critic_ensemble_size: int = 2,
-        critic_subsample_size: Optional[int] = None,
-        temperature_init: float = 1.0,
-        image_keys: Iterable[str] = ("image",),
-        augmentation_function: Optional[callable] = None,
-        **kwargs,
-    ):
-        """
-        Create a new pixel-based agent, with no encoders.
-        """
-
-        policy_network_kwargs["activate_final"] = True
-        critic_network_kwargs["activate_final"] = True
-
-        if encoder_type == "resnet":
-            from mujoco_sim.algo.vision.resnet_v1 import resnetv1_configs
-
-            encoders = {
-                image_key: resnetv1_configs["resnetv1-10"](
-                    pooling_method="spatial_learned_embeddings",
-                    num_spatial_blocks=8,
-                    bottleneck_dim=256,
-                    name=f"encoder_{image_key}",
-                )
-                for image_key in image_keys
-            }
+        
+    @classmethod  
+    def create_pixels(  
+        cls,  
+        rng: PRNGKey,  
+        observations: Data,  
+        actions: jnp.ndarray,  
+        # Model architecture  
+        encoder_type: str = "resnet-pretrained",  
+        use_proprio: bool = False,  
+        critic_network_kwargs: dict = {  
+            "hidden_dims": [256, 256],  
+        },  
+        policy_network_kwargs: dict = {  
+            "hidden_dims": [256, 256],  
+        },  
+        policy_kwargs: dict = {  
+            "tanh_squash_distribution": True,  
+            "std_parameterization": "uniform",  
+        },  
+        critic_ensemble_size: int = 2,  
+        critic_subsample_size: Optional[int] = None,  
+        temperature_init: float = 1.0,  
+        image_keys: Iterable[str] = ("image",),  
+        augmentation_function: Optional[callable] = None,  
+        **kwargs,  
+    ):  
+        """  
+        Create a new pixel-based agent, with no encoders.  
+        """  
+    
+        policy_network_kwargs["activate_final"] = True  
+        critic_network_kwargs["activate_final"] = True  
+    
+        if encoder_type == "resnet":  
+            from mujoco_sim.algo.vision.resnet_v1 import resnetv1_configs  
+    
+            encoders = {  
+                image_key: resnetv1_configs["resnetv1-10"](  
+                    pooling_method="spatial_learned_embeddings",  
+                    num_spatial_blocks=8,  
+                    bottleneck_dim=256,  
+                    name=f"encoder_{image_key}",  
+                )  
+                for image_key in image_keys  
+            }  
         elif encoder_type == "resnet-pretrained":
             from mujoco_sim.algo.vision.resnet_v1 import (
                 PreTrainedResNetEncoder,
@@ -498,9 +499,10 @@ class SACAgent(flax.struct.PyTreeNode):
                 )
                 for image_key in image_keys
             }
-        else:
-            raise NotImplementedError(f"Unknown encoder type: {encoder_type}")
 
+        else:  
+            raise NotImplementedError(f"Unknown encoder type: {encoder_type}")
+        
         encoder_def = EncodingWrapper(
             encoder=encoders,
             use_proprio=use_proprio,
@@ -556,3 +558,115 @@ class SACAgent(flax.struct.PyTreeNode):
             agent = load_resnet10_params(agent, image_keys)
 
         return agent
+    
+
+def make_sac_agent_with_hpt(  
+    rng: jax.random.PRNGKey,  
+    observations: Dict,  
+    actions: jnp.ndarray,  
+    # HPT配置  
+    hpt_config: Dict = None,  
+    domain_name: str = "serl",  
+    # 其他SAC参数  
+    critic_network_kwargs: Dict = None,  
+    policy_network_kwargs: Dict = None,  
+    policy_kwargs: Dict = None,  
+    temperature_init: float = 1e-2,  
+    discount: float = 0.97,  
+    backup_entropy: bool = False,  
+    critic_ensemble_size: int = 2,  
+    critic_subsample_size: Optional[int] = None,  
+    reward_bias: float = 0.0,  
+    target_entropy: Optional[float] = None,  
+    augmentation_function: Optional[callable] = None,  
+    **kwargs,  
+):  
+    """  
+    创建一个使用HPT编码器的SAC代理  
+    Args:  
+        rng: 随机数生成器键  
+        observations: 样本观察  
+        actions: 样本动作  
+        hpt_config: HPT模型配置  
+        domain_name: HPT领域名称  
+        其他参数与标准SAC相同  
+    """  
+    from mujoco_sim.algo.networks.hpt_encoder import HPTEncoder  
+    from mujoco_sim.algo.networks.actor_critic_nets import Critic, Policy, ensemblize  
+    from mujoco_sim.algo.networks.mlp import MLP  
+    from mujoco_sim.algo.networks.lagrange import GeqLagrangeMultiplier  
+    from mujoco_sim.algo.common.common import ModuleDict  
+    # 默认配置  
+    if critic_network_kwargs is None:  
+        critic_network_kwargs = {  
+            "activations": nn.tanh,  
+            "use_layer_norm": True,  
+            "hidden_dims": [256, 256],  
+            "activate_final": True,  
+        }  
+    if policy_network_kwargs is None:  
+        policy_network_kwargs = {  
+            "activations": nn.tanh,  
+            "use_layer_norm": True,  
+            "hidden_dims": [256, 256],  
+            "activate_final": True,  
+        }  
+    if policy_kwargs is None:  
+        policy_kwargs = {  
+            "tanh_squash_distribution": True,  
+            "std_parameterization": "exp",  
+            "std_min": 1e-5,  
+            "std_max": 5,  
+        }  
+    # 创建HPT编码器  
+    encoder_def = HPTEncoder(  
+        hpt_config=hpt_config,  
+        domain_name=domain_name,  
+    )  
+    # 共享编码器  
+    encoders = {  
+        "critic": encoder_def,  
+        "actor": encoder_def,  
+    }  
+    # 创建评论家网络  
+    critic_backbone = partial(MLP, **critic_network_kwargs)  
+    critic_backbone = ensemblize(critic_backbone, critic_ensemble_size)(  
+        name="critic_ensemble"  
+    )  
+    critic_def = partial(  
+        Critic, encoder=encoders["critic"], network=critic_backbone  
+    )(name="critic")  
+    # 创建策略网络  
+    policy_def = Policy(  
+        encoder=encoders["actor"],  
+        network=MLP(**policy_network_kwargs),  
+        action_dim=actions.shape[-1],  
+        **policy_kwargs,  
+        name="actor",  
+    )  
+    # 创建温度参数  
+    temperature_def = GeqLagrangeMultiplier(  
+        init_value=temperature_init,  
+        constraint_shape=(),  
+        constraint_type="geq",  
+        name="temperature",  
+    )  
+    # 创建SAC代理  
+    rng, create_rng = jax.random.split(rng)  
+    agent = SACAgent.create(  
+        create_rng,  
+        observations,  
+        actions,  
+        actor_def=policy_def,  
+        critic_def=critic_def,  
+        temperature_def=temperature_def,  
+        critic_ensemble_size=critic_ensemble_size,  
+        critic_subsample_size=critic_subsample_size,  
+        discount=discount,  
+        backup_entropy=backup_entropy,  
+        reward_bias=reward_bias,  
+        target_entropy=target_entropy,  
+        augmentation_function=augmentation_function,  
+        **kwargs,  
+    )  
+    return agent

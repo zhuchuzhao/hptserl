@@ -30,6 +30,7 @@ from mujoco_sim.algo.utils.launcher import (
     make_sac_pixel_agent_hybrid_dual_arm,
     make_trainer_config,
     make_wandb_logger,
+    make_sac_hpt_agent,
 )
 from mujoco_sim.algo.data.data_store import MemoryEfficientReplayBufferDataStore
 
@@ -46,6 +47,7 @@ flags.DEFINE_string("checkpoint_path", None, "Path to save checkpoints.")
 flags.DEFINE_integer("eval_checkpoint_step", 0, "Step to evaluate the checkpoint.")
 flags.DEFINE_integer("eval_n_trajs", 0, "Number of trajectories to evaluate.")
 flags.DEFINE_boolean("save_video", False, "Save video.")
+flags.DEFINE_boolean("hpt", False, "Use hpt.")
 
 flags.DEFINE_boolean(
     "debug", False, "Debug mode."
@@ -108,7 +110,11 @@ def actor(agent, data_store, intvn_data_store, env, sampling_rng):
         print(f"success rate: {success_counter / FLAGS.eval_n_trajs}")
         print(f"average time: {np.mean(time_list)}")
         return  # after done eval, return and exit
-    
+    # print("checkpoint_path", FLAGS.checkpoint_path)
+    # print(os.path.join(FLAGS.checkpoint_path, "buffer/*.pkl"))
+    # print(glob.glob(os.path.join(FLAGS.checkpoint_path, "buffer/*.pkl")))
+    # print(natsorted(glob.glob(os.path.join(FLAGS.checkpoint_path, "buffer/*.pkl"))))
+    # print(os.path.basename(natsorted(glob.glob(os.path.join(FLAGS.checkpoint_path, "buffer/*.pkl")))))
     start_step = (
         int(os.path.basename(natsorted(glob.glob(os.path.join(FLAGS.checkpoint_path, "buffer/*.pkl")))[-1])[12:-4]) + 1
         if FLAGS.checkpoint_path and os.path.exists(FLAGS.checkpoint_path)
@@ -361,7 +367,6 @@ def learner(rng, agent, replay_buffer, demo_buffer, wandb_logger=None):
 def main(_):
     global config
     config = CONFIG_MAPPING[FLAGS.exp_name]()
-
     assert config.batch_size % num_devices == 0
     # seed
     rng = jax.random.PRNGKey(FLAGS.seed)
@@ -377,15 +382,24 @@ def main(_):
     rng, sampling_rng = jax.random.split(rng)
     
     if config.setup_mode == 'single-arm-fixed-gripper' or config.setup_mode == 'dual-arm-fixed-gripper':   
-        print("yes！！！！！！！")
-        agent: SACAgent = make_sac_pixel_agent(
-            seed=FLAGS.seed,
-            sample_obs=env.observation_space.sample(),
-            sample_action=env.action_space.sample(),
-            image_keys=config.image_keys,
-            encoder_type=config.encoder_type,
-            discount=config.discount,
-        )
+        if FLAGS.hpt:
+            print("Is hpt！！！！！！！")
+            agent: SACAgent = make_sac_hpt_agent(
+                seed=FLAGS.seed,
+                sample_obs=env.observation_space.sample(),
+                sample_action=env.action_space.sample(),
+                image_keys=config.image_keys,
+                discount=config.discount,
+            )
+        else:
+            agent: SACAgent = make_sac_pixel_agent(
+                seed=FLAGS.seed,
+                sample_obs=env.observation_space.sample(),
+                sample_action=env.action_space.sample(),
+                image_keys=config.image_keys,
+                encoder_type=config.encoder_type,
+                discount=config.discount,
+            )
         include_grasp_penalty = False
     elif config.setup_mode == 'single-arm-learned-gripper':
         agent: SACAgentHybridSingleArm = make_sac_pixel_agent_hybrid_single_arm(

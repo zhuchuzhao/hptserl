@@ -126,7 +126,7 @@ class TrainConfig(DefaultTrainingConfig):
                     "ur5e/wrist_torque",
                     "connector_pose",]
     buffer_period = 1000
-    checkpoint_period = 5000
+    checkpoint_period = 1000
     steps_per_update = 50
     encoder_type = "resnet-pretrained"
     setup_mode = "single-arm-fixed-gripper"

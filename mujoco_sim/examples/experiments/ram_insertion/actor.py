@@ -11,8 +11,9 @@ cmd = [
     'python', 
     '../../train_rlpd_copy.py', 
     '--exp_name=ram_insertion', 
-    '--checkpoint_path=first_run',
-    '--actor'
+    '--checkpoint_path=hpt',
+    '--actor',
+    '--hpt',
 ] + sys.argv[1:] 
  
 # Execute the command 

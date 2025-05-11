@@ -257,3 +257,91 @@ def make_wandb_logger(
         debug=debug,
     )
     return wandb_logger
+
+def make_sac_hpt_agent(  
+    seed,  
+    sample_obs,  
+    sample_action,  
+    image_keys=("image",),  
+    embed_dim=512,  
+    num_blocks=8,  
+    num_heads=8,  
+    reward_bias=0.0,  
+    target_entropy=None,  
+    discount=0.97,  
+):  
+    """  
+    创建一个使用HPT编码器的SAC代理的便捷函数  
+      
+    Args:  
+        seed: 随机种子  
+        sample_obs: 样本观察  
+        sample_action: 样本动作  
+        image_keys: 图像键列表  
+        embed_dim: HPT嵌入维度  
+        num_blocks: HPT Transformer块数量  
+        num_heads: HPT注意力头数量  
+        reward_bias: 奖励偏置  
+        target_entropy: 目标熵  
+        discount: 折扣因子  
+      
+    Returns:  
+        SAC代理  
+    """  
+    from mujoco_sim.algo.networks.hpt.config import create_default_hpt_config  
+    from mujoco_sim.algo.agents.continuous.sac import make_sac_agent_with_hpt  
+      
+    # 获取状态维度  
+    state_dim = None  
+    if "state" in sample_obs:  
+        state_dim = sample_obs["state"].shape[-1]  
+      
+    # 获取动作维度  
+    action_dim = sample_action.shape[-1]  
+      
+    # 创建HPT配置  
+    hpt_config = create_default_hpt_config(  
+        image_keys=image_keys,  
+        state_dim=state_dim,  
+        action_dim=action_dim,  
+        embed_dim=embed_dim,  
+        num_blocks=num_blocks,  
+        num_heads=num_heads,  
+        use_language=False,  
+        use_proprio=True,  
+    )  
+      
+    # 创建SAC代理  
+    agent = make_sac_agent_with_hpt(  
+        jax.random.PRNGKey(seed),  
+        sample_obs,  
+        sample_action,  
+        hpt_config=hpt_config,  
+        domain_name="serl",  
+        policy_kwargs={  
+            "tanh_squash_distribution": True,  
+            "std_parameterization": "exp",  
+            "std_min": 1e-5,  
+            "std_max": 5,  
+        },  
+        critic_network_kwargs={  
+            "activations": nn.tanh,  
+            "use_layer_norm": True,  
+            "hidden_dims": [256, 256],  
+        },  
+        policy_network_kwargs={  
+            "activations": nn.tanh,  
+            "use_layer_norm": True,  
+            "hidden_dims": [256, 256],  
+        },  
+        temperature_init=1e-2,  
+        discount=discount,  
+        backup_entropy=False,  
+        critic_ensemble_size=2,  
+        critic_subsample_size=None,  
+        reward_bias=reward_bias,  
+        target_entropy=target_entropy,  
+        augmentation_function=make_batch_augmentation_func(image_keys),  
+    )  
+      
+    return agent
